@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { OAuthButtons } from '@/components/oauth-buttons'
 
 export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const router = useRouter()
@@ -105,6 +106,10 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 : 'Sign in'}
           </Button>
         </form>
+
+        <div className="mt-6">
+          <OAuthButtons mode={mode} />
+        </div>
 
         <p className="text-sm text-muted-foreground text-center mt-6">
           {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
