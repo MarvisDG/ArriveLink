@@ -15,6 +15,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Button variant="ghost" size="sm" asChild>
               <Link href="/">Home</Link>
             </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/operator/login">Login</Link>
+            </Button>
           </nav>
         </div>
       </header>
