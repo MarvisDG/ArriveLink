@@ -11,9 +11,9 @@ export const metadata = {
 export default async function Home() {
   const session = await auth.api.getSession({ headers: await headers() })
 
-  if (!session?.user) {
-    redirect('/sign-in')
-  }
+  // if (!session?.user) {
+  //   redirect('/sign-in')
+  // }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-slate-50">
