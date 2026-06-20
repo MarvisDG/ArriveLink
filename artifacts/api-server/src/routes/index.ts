@@ -1,8 +1,22 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import citiesRouter from "./cities";
+import companiesRouter from "./companies";
+import routesRouter from "./routes";
+import reviewsRouter from "./reviews";
+import unlocksRouter from "./unlocks";
+import operatorRouter from "./operator";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(citiesRouter);
+router.use(companiesRouter);
+router.use(routesRouter);
+router.use(reviewsRouter);
+router.use(unlocksRouter);
+router.use(operatorRouter);
+router.use(adminRouter);
 
 export default router;
