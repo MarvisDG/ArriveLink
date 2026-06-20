@@ -3,13 +3,17 @@
  * Do not edit manually.
  * Api
  * ArriveLink API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import type { SearchRouteCompany } from './searchRouteCompany';
+import type { SearchRoutePriceType } from './searchRoutePriceType';
 
 export interface SearchRoute {
   id: number;
   price: number;
+  price_type: SearchRoutePriceType;
+  /** @nullable */
+  price_verified_date?: string | null;
   departure_times: string[];
   terminal_location: string;
   /** @nullable */

@@ -1,8 +1,15 @@
 import { Link } from "wouter";
-import { Bus } from "lucide-react";
+import { Bus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+function getUserToken() {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem("user_token");
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const isLoggedIn = !!getUserToken();
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -14,12 +21,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Bus className="h-6 w-6" />
             <span>ArriveLink</span>
           </Link>
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
               <Link href="/">Home</Link>
             </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/operator/login">For Operators</Link>
+            {isLoggedIn ? (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/app">
+                  <User className="h-4 w-4 mr-1.5" />
+                  My Account
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/app/login">Sign In</Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/business/login">For Business</Link>
             </Button>
           </nav>
         </div>
@@ -37,8 +56,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <span>ArriveLink</span>
               </Link>
               <p className="text-muted-foreground mb-4 max-w-sm">
-                The first platform where Nigerian road travelers can compare bus
-                companies side-by-side and reach a rep in minutes.
+                Nigeria's most accurate bus travel directory. Search, compare, and
+                message transport companies directly — for free.
               </p>
             </div>
             <div>
@@ -55,32 +74,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/" className="hover:text-primary transition-colors">
-                    How it works
+                  <Link href="/app/login" className="hover:text-primary transition-colors">
+                    Traveler Sign In
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
+              <h4 className="font-semibold mb-4">For Business</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link
+                    href="/business/login"
+                    className="hover:text-primary transition-colors"
+                  >
+                    Business Login
+                  </Link>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-primary transition-colors">
+                    List Your Company
+                  </a>
+                </li>
                 <li>
                   <a href="#" className="hover:text-primary transition-colors">
                     Help Center
                   </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-primary transition-colors">
-                    Contact Us
-                  </a>
-                </li>
-                <li>
-                  <Link
-                    href="/operator/login"
-                    className="hover:text-primary transition-colors"
-                  >
-                    For Operators
-                  </Link>
                 </li>
               </ul>
             </div>

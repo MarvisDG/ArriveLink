@@ -41,7 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice, getStatusColor, getStatusLabel, cn } from "@/lib/utils";
 import { StarRating } from "@/components/star-rating";
-import { UnlockContactModal } from "@/components/unlock-contact-modal";
+import { MessageCompanyModal } from "@/components/message-company-modal";
 import { Layout } from "@/components/layout";
 
 const reviewFormSchema = z.object({
@@ -334,9 +334,8 @@ export default function Company() {
                         </div>
 
                         <div className="w-full md:w-64 flex flex-col justify-end pt-4 border-t md:border-t-0 md:border-l border-border md:pl-6">
-                          <UnlockContactModal
+                          <MessageCompanyModal
                             companyId={company.id}
-                            routeId={route.id}
                             companyName={company.name}
                           />
                         </div>

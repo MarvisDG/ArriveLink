@@ -28,6 +28,8 @@ export interface Route {
   departure_city_id: number;
   destination_city_id: number;
   price: number;
+  price_type: "verified" | "last_seen";
+  price_verified_date: string | null;
   departure_times: string[];
   terminal_location: string;
   terminal_address: string | null;
@@ -50,6 +52,15 @@ export interface Review {
   created_at: string;
 }
 
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  password: string;
+  created_at: string;
+}
+
 export interface Operator {
   id: number;
   email: string;
@@ -58,15 +69,24 @@ export interface Operator {
   created_at: string;
 }
 
-export interface Unlock {
+export interface Conversation {
   id: number;
-  traveler_name: string;
-  traveler_email: string;
+  user_id: number | null;
+  guest_name: string | null;
+  guest_email: string | null;
   company_id: number;
-  route_id: number;
-  amount_paid: number;
-  paystack_reference: string;
-  contact_revealed: boolean;
+  created_at: string;
+  last_message_at: string;
+  unread_user: number;
+  unread_company: number;
+}
+
+export interface Message {
+  id: number;
+  conversation_id: number;
+  sender_type: "user" | "company";
+  sender_name: string;
+  body: string;
   created_at: string;
 }
 
@@ -140,6 +160,8 @@ const routes: Route[] = [
     departure_city_id: 1,
     destination_city_id: 2,
     price: 1500000,
+    price_type: "verified",
+    price_verified_date: "2026-06-20",
     departure_times: ["06:00", "09:00", "14:00"],
     terminal_location: "Jibowu Terminal",
     terminal_address: "Jibowu St, Yaba, Lagos",
@@ -152,6 +174,8 @@ const routes: Route[] = [
     departure_city_id: 1,
     destination_city_id: 2,
     price: 1800000,
+    price_type: "verified",
+    price_verified_date: "2026-06-18",
     departure_times: ["07:00", "12:00"],
     terminal_location: "Amuwo Odofin Terminal",
     terminal_address: "Mile 2, Lagos",
@@ -164,6 +188,8 @@ const routes: Route[] = [
     departure_city_id: 1,
     destination_city_id: 5,
     price: 450000,
+    price_type: "verified",
+    price_verified_date: "2026-06-15",
     departure_times: ["06:30", "10:00", "16:00"],
     terminal_location: "Jibowu Terminal",
     terminal_address: "Jibowu St, Yaba, Lagos",
@@ -176,6 +202,8 @@ const routes: Route[] = [
     departure_city_id: 2,
     destination_city_id: 6,
     price: 1200000,
+    price_type: "last_seen",
+    price_verified_date: "2026-06-10",
     departure_times: ["08:00", "15:00"],
     terminal_location: "Utako Terminal",
     terminal_address: "Utako, Abuja",
@@ -188,6 +216,8 @@ const routes: Route[] = [
     departure_city_id: 1,
     destination_city_id: 3,
     price: 900000,
+    price_type: "last_seen",
+    price_verified_date: "2026-06-05",
     departure_times: ["05:30", "11:00"],
     terminal_location: "Amuwo Odofin Terminal",
     terminal_address: null,
@@ -213,6 +243,17 @@ const reviews: Review[] = [
   },
 ];
 
+const users: User[] = [
+  {
+    id: 1,
+    name: "Ada Okafor",
+    email: "ada@example.com",
+    phone: "+2348012345678",
+    password: "password123",
+    created_at: "2026-01-10T08:00:00Z",
+  },
+];
+
 const operators: Operator[] = [
   {
     id: 1,
@@ -223,17 +264,45 @@ const operators: Operator[] = [
   },
 ];
 
-const unlocks: Unlock[] = [];
+const conversations: Conversation[] = [
+  {
+    id: 1,
+    user_id: 1,
+    guest_name: null,
+    guest_email: null,
+    company_id: 1,
+    created_at: "2026-06-18T10:00:00Z",
+    last_message_at: "2026-06-18T10:05:00Z",
+    unread_user: 1,
+    unread_company: 0,
+  },
+];
+
+const messages: Message[] = [
+  {
+    id: 1,
+    conversation_id: 1,
+    sender_type: "user",
+    sender_name: "Ada Okafor",
+    body: "Hello, do you have seats available for Lagos to Abuja on June 25?",
+    created_at: "2026-06-18T10:00:00Z",
+  },
+  {
+    id: 2,
+    conversation_id: 1,
+    sender_type: "company",
+    sender_name: "GUO Transport",
+    body: "Yes, we have seats available. Please arrive at Jibowu terminal 30 minutes before departure.",
+    created_at: "2026-06-18T10:05:00Z",
+  },
+];
 
 let nextRouteId = 6;
 let nextReviewId = 2;
-let nextUnlockId = 1;
+let nextUserId = 2;
 let nextOperatorId = 2;
-
-const pendingUnlocks = new Map<
-  string,
-  { traveler_name: string; traveler_email: string; company_id: number; route_id: number }
->();
+let nextConversationId = 2;
+let nextMessageId = 3;
 
 export function getCities() {
   return cities;
@@ -271,7 +340,14 @@ export function getCompany(id: number) {
   const companyRoutes = routes
     .filter((r) => r.company_id === id && r.is_active)
     .map((r) => ({
-      ...r,
+      id: r.id,
+      price: r.price,
+      price_type: r.price_type,
+      price_verified_date: r.price_verified_date,
+      departure_times: r.departure_times,
+      terminal_location: r.terminal_location,
+      terminal_address: r.terminal_address,
+      status: r.status,
       departure_city: getCity(r.departure_city_id)!,
       destination_city: getCity(r.destination_city_id)!,
     }));
@@ -366,7 +442,14 @@ export function searchRoutes(fromCityId: number, toCityId: number) {
     .map((r) => {
       const company = companies.find((c) => c.id === r.company_id)!;
       return {
-        ...r,
+        id: r.id,
+        price: r.price,
+        price_type: r.price_type,
+        price_verified_date: r.price_verified_date,
+        departure_times: r.departure_times,
+        terminal_location: r.terminal_location,
+        terminal_address: r.terminal_address,
+        status: r.status,
         company: {
           id: company.id,
           name: company.name,
@@ -410,57 +493,190 @@ export function getPlatformStats() {
     company_count: companies.length,
     city_count: cities.length,
     route_count: routes.filter((r) => r.is_active).length,
-    unlock_count: unlocks.length,
+    user_count: users.length,
   };
 }
 
-export function initiateUnlock(data: {
-  traveler_name: string;
-  traveler_email: string;
-  company_id: number;
-  route_id: number;
+export function userRegister(data: {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
 }) {
-  const reference = `AL-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  pendingUnlocks.set(reference, data);
-  return {
-    reference,
-    test_mode: true,
-    payment_url: null,
+  if (users.some((u) => u.email === data.email)) {
+    throw new Error("Email already registered");
+  }
+  const user: User = {
+    id: nextUserId++,
+    name: data.name,
+    email: data.email,
+    phone: data.phone ?? null,
+    password: data.password,
+    created_at: new Date().toISOString(),
   };
+  users.push(user);
+  return { token: `usr-${user.id}-${Date.now()}`, user_id: user.id, name: user.name };
 }
 
-export function verifyUnlock(data: { reference: string; traveler_email: string }) {
-  const pending = pendingUnlocks.get(data.reference);
-  if (!pending || pending.traveler_email !== data.traveler_email) {
-    throw new Error("Invalid unlock reference");
+export function userLogin(email: string, password: string) {
+  const user = users.find((u) => u.email === email && u.password === password);
+  if (!user) throw new Error("Invalid email or password");
+  return { token: `usr-${user.id}-${Date.now()}`, user_id: user.id, name: user.name };
+}
+
+export function getUserFromToken(token: string | null) {
+  if (!token?.startsWith("usr-")) return null;
+  const id = parseInt(token.split("-")[1] ?? "0", 10);
+  return users.find((u) => u.id === id) ?? null;
+}
+
+export function getUserProfile(userId: number) {
+  const user = users.find((u) => u.id === userId);
+  if (!user) return null;
+  const { password: _, ...profile } = user;
+  return profile;
+}
+
+export function getUserConversations(userId: number) {
+  return conversations
+    .filter((c) => c.user_id === userId)
+    .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
+    .map((c) => {
+      const company = companies.find((co) => co.id === c.company_id);
+      const lastMsg = messages
+        .filter((m) => m.conversation_id === c.id)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      return {
+        id: c.id,
+        company_id: c.company_id,
+        company_name: company?.name ?? null,
+        last_message: lastMsg?.body ?? null,
+        last_message_at: c.last_message_at,
+        unread_count: c.unread_user,
+      };
+    });
+}
+
+export function getCompanyConversations(companyId: number) {
+  return conversations
+    .filter((c) => c.company_id === companyId)
+    .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
+    .map((c) => {
+      const lastMsg = messages
+        .filter((m) => m.conversation_id === c.id)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      const displayName = c.guest_name ?? (users.find((u) => u.id === c.user_id)?.name ?? "Traveler");
+      return {
+        id: c.id,
+        user_name: displayName,
+        guest_email: c.guest_email,
+        last_message: lastMsg?.body ?? null,
+        last_message_at: c.last_message_at,
+        unread_count: c.unread_company,
+      };
+    });
+}
+
+export function getOrCreateConversation(data: {
+  user_id?: number;
+  guest_name?: string;
+  guest_email?: string;
+  company_id: number;
+}) {
+  if (data.user_id) {
+    const existing = conversations.find(
+      (c) => c.user_id === data.user_id && c.company_id === data.company_id
+    );
+    if (existing) return existing;
   }
 
-  const company = companies.find((c) => c.id === pending.company_id);
-  const route = routes.find((r) => r.id === pending.route_id);
-  if (!company || !route) throw new Error("Route not found");
-
-  pendingUnlocks.delete(data.reference);
-
-  unlocks.push({
-    id: nextUnlockId++,
-    traveler_name: pending.traveler_name,
-    traveler_email: pending.traveler_email,
-    company_id: pending.company_id,
-    route_id: pending.route_id,
-    amount_paid: 20000,
-    paystack_reference: data.reference,
-    contact_revealed: true,
+  const conv: Conversation = {
+    id: nextConversationId++,
+    user_id: data.user_id ?? null,
+    guest_name: data.guest_name ?? null,
+    guest_email: data.guest_email ?? null,
+    company_id: data.company_id,
     created_at: new Date().toISOString(),
+    last_message_at: new Date().toISOString(),
+    unread_user: 0,
+    unread_company: 0,
+  };
+  conversations.push(conv);
+  return conv;
+}
+
+export function getConversationMessages(conversationId: number) {
+  return messages
+    .filter((m) => m.conversation_id === conversationId)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+}
+
+export function sendMessage(data: {
+  conversation_id: number;
+  sender_type: "user" | "company";
+  sender_name: string;
+  body: string;
+}) {
+  const conv = conversations.find((c) => c.id === data.conversation_id);
+  if (!conv) throw new Error("Conversation not found");
+
+  const msg: Message = {
+    id: nextMessageId++,
+    conversation_id: data.conversation_id,
+    sender_type: data.sender_type,
+    sender_name: data.sender_name,
+    body: data.body,
+    created_at: new Date().toISOString(),
+  };
+  messages.push(msg);
+
+  conv.last_message_at = msg.created_at;
+  if (data.sender_type === "user") {
+    conv.unread_company += 1;
+  } else {
+    conv.unread_user += 1;
+  }
+
+  return msg;
+}
+
+export function markConversationRead(conversationId: number, as_role: "user" | "company") {
+  const conv = conversations.find((c) => c.id === conversationId);
+  if (!conv) throw new Error("Conversation not found");
+  if (as_role === "user") conv.unread_user = 0;
+  else conv.unread_company = 0;
+  return { ok: true };
+}
+
+export function startConversation(data: {
+  user_id?: number;
+  guest_name?: string;
+  guest_email?: string;
+  company_id: number;
+  initial_message: string;
+}) {
+  const conv = getOrCreateConversation({
+    user_id: data.user_id,
+    guest_name: data.guest_name,
+    guest_email: data.guest_email,
+    company_id: data.company_id,
   });
 
-  const from = getCity(route.departure_city_id)!;
-  const to = getCity(route.destination_city_id)!;
+  const user = data.user_id ? users.find((u) => u.id === data.user_id) : null;
+  const senderName = user?.name ?? data.guest_name ?? "Traveler";
 
+  const msg = sendMessage({
+    conversation_id: conv.id,
+    sender_type: "user",
+    sender_name: senderName,
+    body: data.initial_message,
+  });
+
+  const company = companies.find((c) => c.id === data.company_id);
   return {
-    company_name: company.name,
-    contact_type: company.rep_whatsapp ? "whatsapp" : "phone",
-    contact_value: company.rep_whatsapp ?? company.rep_phone ?? "",
-    route_summary: `${from.name} → ${to.name}`,
+    conversation_id: conv.id,
+    company_name: company?.name ?? null,
+    message: msg,
   };
 }
 
@@ -532,6 +748,8 @@ export function addOperatorRoute(companyId: number, data: Partial<Route> & { dep
     departure_city_id: data.departure_city_id!,
     destination_city_id: data.destination_city_id!,
     price: data.price ?? 0,
+    price_type: data.price_type ?? "last_seen",
+    price_verified_date: data.price_verified_date ?? null,
     departure_times: data.departure_times ?? [],
     terminal_location: data.terminal_location ?? "",
     terminal_address: data.terminal_address ?? null,
@@ -562,21 +780,25 @@ export function checkAdminSecret(secret: string) {
 
 export function getAdminStats() {
   return {
-    total_unlocks: unlocks.length,
-    total_revenue_kobo: unlocks.reduce((sum, u) => sum + u.amount_paid, 0),
+    total_users: users.length,
     total_companies: companies.length,
     total_operators: operators.length,
+    total_messages: messages.length,
   };
 }
 
-export function getAdminUnlocks() {
-  return unlocks.map((u) => {
-    const company = companies.find((c) => c.id === u.company_id);
-    return {
-      ...u,
-      company_name: company?.name ?? null,
-    };
+export function getAdminUsers() {
+  return users.map((u) => {
+    const { password: _, ...safe } = u;
+    const convCount = conversations.filter((c) => c.user_id === u.id).length;
+    return { ...safe, conversation_count: convCount };
   });
+}
+
+export function deleteUser(id: number) {
+  const index = users.findIndex((u) => u.id === id);
+  if (index === -1) throw new Error("User not found");
+  users.splice(index, 1);
 }
 
 export function getAdminCompanies() {

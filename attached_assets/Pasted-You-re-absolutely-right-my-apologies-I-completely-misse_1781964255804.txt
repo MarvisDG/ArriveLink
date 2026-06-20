@@ -1,0 +1,535 @@
+You're absolutely right, my apologies! I completely missed that. Let me correct this immediately.
+
+The ₦200 unlock feature is **removed entirely**. Users can now **book directly** through the hybrid booking system without any upfront unlock fee. The revenue model shifts to **commission-based** from bookings.
+
+Let me provide the corrected, **summarized prompt** focusing only on **Phase 1 (Directory)** and **Phase 2 (Hybrid Booking)**.
+
+---
+
+## CORRECTED SUMMARY
+
+### What Changed
+- ❌ **Removed:** ₦200 unlock fee to reveal company contact
+- ✅ **Added:** Direct booking through hybrid system (search → select → book → pay)
+- ✅ **Revenue:** Commission from each booking (6-8%)
+- ✅ **Still have:** Company verification, messaging, reviews, ratings
+
+---
+
+# ARRIVELINK – PROMPT FOR CLAUDE AI
+## Phase 1: Directory | Phase 2: Hybrid Booking
+
+---
+
+## 1. PROJECT OVERVIEW
+
+### What We're Building
+ArriveLink connects Nigerian travelers with verified transport companies. Users search routes, compare companies, and book rides directly.
+
+### Two Phases (Current Focus)
+
+| Phase | Focus | What Users Do |
+|-------|-------|---------------|
+| **Phase 1** | Directory | Search routes, view companies, see prices and schedules, send messages to companies |
+| **Phase 2** | Hybrid Booking | Full booking flow: search → select seat → pay → get digital ticket |
+
+---
+
+## 2. USER ROLES & DASHBOARDS
+
+### Three Dashboards (Under One Domain)
+
+| Role | Dashboard | URL |
+|------|-----------|-----|
+| **Traveler** | User Dashboard | `arrivelink.ng/app` |
+| **Company** | Business Dashboard | `arrivelink.ng/business` |
+| **Admin** | Admin Dashboard | `arrivelink.ng/admin` (hidden) |
+
+### Key Principle
+Separate but connected. Users only see what they need. Companies never see user data. Admins see everything.
+
+---
+
+## 3. PHASE 1: DIRECTORY
+
+### 3.1 Purpose
+Build Nigeria's most accurate transport database. Users can search, compare, and contact companies directly. No payment required.
+
+### 3.2 Core Features
+
+#### Traveler Features
+
+| Feature | What It Does |
+|---------|--------------|
+| **Search Routes** | Enter departure city, destination, date → see all available companies |
+| **Compare Companies** | Side-by-side view of prices, times, ratings, bus types |
+| **Company Profiles** | Full profile: history, fleet, routes, terminal location, photos, ratings |
+| **Bus Departure Status** | Scheduled times shown; company updates status (on time/delayed/departed) |
+| **Free Messaging** | Users can message any company directly (WhatsApp-style chat) |
+| **Share Trip** | Share live tracking link with family (departure time, expected arrival) |
+
+**Price Display:**
+- **Verified Price:** Exact price confirmed by company (with date)
+- **Last Seen Price:** Last recorded price (with date)
+- Shows: "₦8,000 (Verified on 2026-06-20)"
+
+#### Company Features
+
+| Feature | What It Does |
+|---------|--------------|
+| **Dashboard** | Manage profile, routes, prices, departure times |
+| **Messaging** | Respond to user messages in real-time |
+| **Analytics** | See how many users viewed their profile |
+| **Verification** | Submit CAC, FRSC documents for verified badge |
+| **Price Accuracy** | Agree to honor displayed prices |
+
+#### Admin Features
+
+| Feature | What It Does |
+|---------|--------------|
+| **Dashboard** | View full analytics (users, companies, searches) |
+| **Company Verification** | Review and approve/deny company signups |
+| **Data Management** | Add, edit, verify company information |
+| **User Management** | View users, suspend if needed |
+
+### 3.3 Phase 1 Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Traveler accounts |
+| `businesses` | Company accounts |
+| `admins` | Admin accounts |
+| `cities` | Nigerian cities |
+| `routes` | Company routes (from, to, price, times) |
+| `company_documents` | CAC, FRSC uploads for verification |
+| `messages` | User-company chats |
+| `conversations` | Chat threads |
+| `reviews` | User reviews for companies |
+| `price_history` | Historical price records |
+
+---
+
+## 4. PHASE 2: HYBRID BOOKING
+
+### 4.1 Purpose
+Add full booking capability. Users can search, select seats, pay, and receive digital tickets – all in one flow.
+
+### 4.2 Booking Flow (4 Clicks)
+
+| Click | Action | Time |
+|-------|--------|------|
+| **1** | Search from → to → date. Results appear instantly. | 5 seconds |
+| **2** | Select a bus from results list. | 3 seconds |
+| **3** | Pick a seat from interactive seat map. | 5 seconds |
+| **4** | Confirm booking (auto-filled passenger details) → Pay → Done! | 10 seconds |
+
+**Total Time:** Under 30 seconds from search to confirmed booking.
+
+### 4.3 Detailed Booking Steps
+
+#### Step 1: Search
+```
+User enters:
+- Departure: Lagos
+- Destination: Abuja
+- Date: 2026-06-25
+
+Results:
+┌─────────────────────────────────────────────┐
+│ 🟢 GIG Motors    ₦8,000   6:00 AM   ★4.5   │
+│ 🟡 ABC Transport ₦9,000   8:30 AM   ★4.2   │
+│ 🔴 God is Good   ₦7,500   10:00 AM  ★3.8   │
+└─────────────────────────────────────────────┘
+
+Filters: Price range, time, rating
+```
+
+#### Step 2: Select Bus
+```
+User clicks "Book Now" on GIG Motors
+
+Details shown:
+- Company: GIG Motors
+- Route: Lagos → Abuja
+- Date: 2026-06-25
+- Departure: 6:00 AM
+- Price: ₦8,000
+- Bus Type: Luxury Air-Conditioned
+- Available Seats: 45/60
+
+User clicks "Select Seat"
+```
+
+#### Step 3: Seat Selection
+```
+Interactive seat map appears:
+
+┌────────────────────────────┐
+│  [A1] [A2] [A3] [A4]       │ ← Available (green)
+│  [B1] [B2] [B3] [B4]       │
+│  [C1] [C2] [C3] [C4]       │
+│  [D1] [D2] [D3] [D4]       │
+│  [E1] [E2] [E3] [E4]       │ ← Taken (red)
+│  [F1] [F2] [F3] [F4]       │
+│                             │
+│  🟢 Available   🔴 Taken    │
+└────────────────────────────┘
+
+User clicks available seat → Seat reserved for 5 minutes
+User clicks "Book This Seat"
+```
+
+#### Step 4: Confirm & Pay
+```
+Passenger details auto-filled (saved from previous):
+- Name: John Doe
+- Phone: 08012345678
+- Email: john@email.com
+
+Booking Summary:
+- Company: GIG Motors
+- Route: Lagos → Abuja
+- Date: 2026-06-25
+- Time: 6:00 AM
+- Seat: A3
+- Price: ₦8,000
+- Total: ₦8,000 (no unlock fee)
+
+User clicks "Confirm & Pay" → Paystack popup → Payment
+```
+
+#### Step 5: Digital Ticket
+```
+After successful payment:
+
+┌─────────────────────────────────────────────┐
+│         ARRIVELINK TICKET                    │
+│                                              │
+│  Company: GIG Motors                        │
+│  Route: Lagos → Abuja                       │
+│  Date: 2026-06-25                          │
+│  Time: 6:00 AM                             │
+│  Seat: A3                                  │
+│  Passenger: John Doe                       │
+│                                              │
+│  ┌──────────────────────┐                   │
+│  │   [QR CODE]          │                   │
+│  └──────────────────────┘                   │
+│                                              │
+│  Ticket Code: ARV-2026-06-25-0042          │
+│  Status: ✅ Confirmed                       │
+└─────────────────────────────────────────────┘
+
+Ticket saved in user dashboard
+Email + WhatsApp confirmation sent
+Booking appears in company dashboard
+```
+
+#### Step 6: Company Confirms
+```
+Company sees booking in business dashboard:
+- Booking ID: ARV-2026-06-25-0042
+- Passenger: John Doe
+- Seat: A3
+- Status: Pending → Company clicks "Confirm"
+
+User receives notification:
+"Your booking with GIG Motors has been confirmed!"
+
+If company cancels:
+User receives notification and full refund
+```
+
+### 4.4 Revenue Model (Phase 2)
+
+| Revenue Stream | How It Works |
+|----------------|--------------|
+| **Booking Commission** | 6-8% per booking (automatically deducted by Paystack) |
+| **Featured Listings** | Companies pay ₦50,000-₦100,000/month for priority placement |
+| **Premium Membership** | ₦5,000/month (future Phase 5) |
+
+### 4.5 Phase 2 Added Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `bookings` | All bookings (user, route, seat, status) |
+| `tickets` | Digital tickets with QR codes |
+| `payments` | All transactions (Paystack) |
+| `featured_listings` | Featured company placements |
+
+---
+
+## 5. MESSAGING SYSTEM
+
+### 5.1 Overview
+Users and companies can chat directly. Works like WhatsApp.
+
+### 5.2 Who Can Message Whom
+
+| Sender | Recipient | How |
+|--------|-----------|-----|
+| **User** | Company | Search company name → type message → send |
+| **Company** | User | Reply to user message |
+| **Admin** | Any user or company | Initiate from admin dashboard |
+
+### 5.3 Messaging Features
+
+| Feature | How It Works |
+|---------|--------------|
+| **Real-time** | Messages appear instantly (WebSockets) |
+| **Pull to refresh** | Swipe down to check new messages |
+| **Search companies** | User types company name to find them |
+| **Unread count** | Shows how many unread messages |
+| **Message history** | All messages stored forever |
+| **Read receipts** | Shows if message was read |
+
+---
+
+## 6. USER DASHBOARD (`/app`)
+
+### Sections
+
+| Section | Content |
+|---------|---------|
+| **Home/Overview** | Upcoming trips, recent bookings, notifications |
+| **Book Ride** | Search routes → book → ticket |
+| **Upcoming Trips** | All booked rides with status |
+| **Booking History** | Past trips with option to review |
+| **Messages** | WhatsApp-style chat with companies |
+| **Saved Routes** | Frequently searched routes |
+| **Profile** | Name, phone, email, saved cards |
+
+### Navigation
+- **Navbar (top):** Logo | Book Ride | Upcoming | Messages | Profile | Logout
+- **Menubar (side):** Additional navigation
+
+---
+
+## 7. BUSINESS DASHBOARD (`/business`)
+
+### Sections
+
+| Section | Content |
+|---------|---------|
+| **Overview** | Today's bookings, revenue, response rate |
+| **Bookings** | All bookings: passenger name, route, date, seat, status (pending/confirmed/canceled) |
+| **Route Management** | Add/edit routes, prices, departure times |
+| **Departure Status** | Update bus status: On Time / Delayed / Departed / Canceled |
+| **Messages** | WhatsApp-style chat with travelers |
+| **Reviews** | See and respond to traveler reviews |
+| **Analytics** | Performance charts (bookings over time, revenue) |
+| **Profile** | Company info, documents, bank details, price commitment |
+
+### Navigation
+- **Navbar (top):** Logo | Overview | Bookings | Routes | Messages | Profile | Logout
+- **Menubar (side):** Additional navigation
+
+---
+
+## 8. ADMIN DASHBOARD (`/admin`)
+
+### Sections
+
+| Section | Content |
+|---------|---------|
+| **Overview** | Real-time charts: total users, companies, bookings, revenue |
+| **User Management** | View all users, suspend/delete accounts |
+| **Company Management** | Verify companies, approve/deny signups |
+| **Transaction Monitoring** | All payments, refunds, commissions |
+| **Messaging** | Send messages to any user or company |
+| **Analytics** | Detailed charts: bookings over time, most searched routes, company rankings |
+| **System Settings** | Configure fees, commissions, featured pricing |
+
+### Security
+- **Hidden URL** – Not linked anywhere
+- **Email + password authentication**
+- **Accounts created manually** by founders only
+
+---
+
+## 9. PRICE DISPLAY SYSTEM
+
+### Two Types of Price Displays
+
+| Price Type | What It Means | Display Example |
+|------------|---------------|-----------------|
+| **Verified Price** | Exact price confirmed by company | `₦8,000 (Verified on 2026-06-20)` |
+| **Last Seen Price** | Last recorded price | `Last seen: ₦8,000 (as of 2026-06-18)` |
+
+### Price Accuracy Commitment
+Companies agree to honor displayed prices when they sign up.
+
+---
+
+## 10. TECHNICAL STACK
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js + Tailwind CSS |
+| Backend | Node.js + Express |
+| Database | PostgreSQL + Prisma |
+| Authentication | JWT (httpOnly cookies) |
+| Payments | Paystack |
+| Messaging | Socket.io (WebSockets) |
+| SMS/WhatsApp | Termii |
+| Hosting | Vercel (frontend) + Railway (backend + DB) |
+
+---
+
+## 11. ARCHITECTURE (SINGLE DOMAIN + SUBDOMAIN READY)
+
+### Current: Single Domain with Routing
+
+```
+arrivelink.ng              → Main website
+arrivelink.ng/app          → User Dashboard
+arrivelink.ng/business     → Business Dashboard
+arrivelink.ng/admin        → Admin Dashboard (hidden)
+```
+
+### Future: Subdomains (Foundation Laid)
+
+```
+arrivelink.ng              → Main website
+app.arrivelink.ng          → User Dashboard
+business.arrivelink.ng     → Business Dashboard
+admin.arrivelink.ng        → Admin Dashboard (hidden)
+```
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  MAIN WEBSITE                       │
+│                (arrivelink.ng)                      │
+└─────────────────────────────────────────────────────┘
+                         │
+           ┌─────────────┼─────────────┐
+           ▼             ▼             ▼
+    ┌──────────┐  ┌──────────┐  ┌──────────┐
+    │  /app    │  │/business │  │  /admin  │
+    │  User    │  │ Company  │  │  Admin   │
+    │Dashboard │  │Dashboard │  │Dashboard │
+    └──────────┘  └──────────┘  └──────────┘
+           │             │             │
+           └─────────────┼─────────────┘
+                         ▼
+          ┌──────────────────────────────┐
+          │     SINGLE BACKEND API        │
+          │     Node.js + Express         │
+          │                                │
+          │  /api/user   /api/business    │
+          │  /api/admin  /api/auth        │
+          │  /api/payments  /api/messages │
+          └──────────────────────────────┘
+                         │
+                         ▼
+          ┌──────────────────────────────┐
+          │      POSTGRESQL DATABASE      │
+          │                                │
+          │  users | businesses | admins  │
+          │  routes | bookings | tickets  │
+          │  messages | payments | reviews│
+          └──────────────────────────────┘
+```
+
+---
+
+## 12. DATABASE TABLES (SUMMARY)
+
+### Phase 1 Tables
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Traveler accounts |
+| `businesses` | Company accounts |
+| `admins` | Admin accounts |
+| `cities` | Nigerian cities |
+| `routes` | Company routes (from, to, price, times) |
+| `company_documents` | CAC, FRSC uploads |
+| `messages` | User-company chats |
+| `conversations` | Chat threads |
+| `reviews` | User reviews |
+| `price_history` | Historical prices |
+
+### Phase 2 Added Tables
+
+| Table | Purpose |
+|-------|---------|
+| `bookings` | All bookings (user, route, seat, status) |
+| `tickets` | Digital tickets with QR codes |
+| `payments` | All transactions |
+| `featured_listings` | Featured company placements |
+
+---
+
+## 13. DESIGN GUIDELINES
+
+### Core Principle
+**Follow existing ArriveLink UI design.** Do not change colors, fonts, or styles.
+
+### Consistency
+- Same navbar and menubar structure across all dashboards
+- Same button styles, forms, cards
+- Mobile-responsive (works on phones and desktops)
+
+---
+
+## 14. DEVELOPMENT PRIORITIES
+
+### Phase 1 (Directory) – Month 1-2
+
+| Priority | Feature |
+|----------|---------|
+| 1 | Main website (marketing) |
+| 2 | User signup/login + dashboard |
+| 3 | Search routes + company results |
+| 4 | Company profiles + price display |
+| 5 | Company signup + dashboard |
+| 6 | Messaging (basic) |
+| 7 | Admin dashboard (basic) |
+
+### Phase 2 (Hybrid Booking) – Month 3-5
+
+| Priority | Feature |
+|----------|---------|
+| 1 | Full booking flow (search → seat → pay → ticket) |
+| 2 | Digital tickets with QR codes |
+| 3 | Company booking management |
+| 4 | Real-time messaging (WebSockets) |
+| 5 | Reviews and ratings |
+| 6 | Featured listings |
+| 7 | Advanced analytics |
+
+---
+
+## 15. SUMMARY
+
+### What Phase 1 Delivers
+- ✅ Search and compare routes
+- ✅ Company profiles with verified prices
+- ✅ Free messaging between users and companies
+- ✅ Bus departure status (scheduled times)
+- ✅ Admin dashboard for monitoring
+
+### What Phase 2 Adds
+- ✅ Full booking flow (4 clicks, under 30 seconds)
+- ✅ Digital tickets with QR codes
+- ✅ Real-time seat selection
+- ✅ Company dashboard for booking management
+- ✅ Booking commission revenue (6-8%)
+- ✅ Featured listings
+
+### Revenue Model (Phase 2)
+| Stream | How |
+|--------|-----|
+| Booking Commission | 6-8% per booking |
+| Featured Listings | ₦50,000-₦100,000/month |
+
+---
+
+**END OF SUMMARY PROMPT**
+
+---
+
+This is the corrected, summarized version focused only on Phase 1 and Phase 2 with the unlock feature **removed entirely**. Let me know if you want me to expand any section or if you're ready for me to generate additional content.

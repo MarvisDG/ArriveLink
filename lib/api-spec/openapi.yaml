@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
+  version: 0.2.0
   description: ArriveLink API specification
 servers:
   - url: /api
@@ -18,10 +18,12 @@ tags:
     description: Route operations
   - name: reviews
     description: Review operations
-  - name: unlocks
-    description: Unlock operations
+  - name: users
+    description: Traveler user operations
+  - name: messages
+    description: Messaging operations
   - name: operator
-    description: Operator operations
+    description: Operator (business) operations
   - name: admin
     description: Admin operations
 paths:
@@ -198,43 +200,136 @@ paths:
               schema:
                 $ref: "#/components/schemas/CompanyReview"
 
-  /unlocks/initiate:
+  /users/auth/register:
     post:
-      operationId: initiateUnlock
-      tags: [unlocks]
-      summary: Initiate contact unlock
+      operationId: userRegister
+      tags: [users]
+      summary: Register a new traveler account
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UnlockInitiateInput"
+              $ref: "#/components/schemas/UserRegisterInput"
       responses:
-        "200":
-          description: Unlock initiated
+        "201":
+          description: Registered
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UnlockInitiateResponse"
+                $ref: "#/components/schemas/UserAuthResponse"
 
-  /unlocks/verify:
+  /users/auth/login:
     post:
-      operationId: verifyUnlock
-      tags: [unlocks]
-      summary: Verify payment and reveal contact
+      operationId: userLogin
+      tags: [users]
+      summary: Traveler login
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UnlockVerifyInput"
+              $ref: "#/components/schemas/UserLoginInput"
       responses:
         "200":
-          description: Contact revealed
+          description: Login successful
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UnlockVerifyResponse"
+                $ref: "#/components/schemas/UserAuthResponse"
+
+  /users/me:
+    get:
+      operationId: getUserMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+  /messages/start:
+    post:
+      operationId: startConversation
+      tags: [messages]
+      summary: Start a conversation with a company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartConversationInput"
+      responses:
+        "201":
+          description: Conversation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartConversationResponse"
+
+  /messages/conversations:
+    get:
+      operationId: getConversations
+      tags: [messages]
+      summary: Get conversations for current user or operator
+      responses:
+        "200":
+          description: Conversations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationSummary"
+
+  /messages/conversations/{id}:
+    get:
+      operationId: getConversationMessages
+      tags: [messages]
+      summary: Get messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+
+  /messages/conversations/{id}/send:
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
 
   /operator/auth/login:
     post:
@@ -380,6 +475,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/OkResponse"
 
+  /operator/me/conversations:
+    get:
+      operationId: getOperatorConversations
+      tags: [operator]
+      summary: Get conversations for operator's company
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorConversationSummary"
+
   /admin/stats:
     get:
       operationId: getAdminStats
@@ -393,20 +503,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminStats"
 
-  /admin/unlocks:
+  /admin/users:
     get:
-      operationId: getAdminUnlocks
+      operationId: getAdminUsers
       tags: [admin]
-      summary: Get all unlocks
+      summary: Get all traveler users
       responses:
         "200":
-          description: Unlocks
+          description: Users
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminUnlock"
+                  $ref: "#/components/schemas/AdminUser"
+
+  /admin/users/{id}:
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Delete a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
 
   /admin/companies:
     get:
@@ -561,6 +690,11 @@ components:
           type: integer
         price:
           type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        price_verified_date:
+          type: ["string", "null"]
         departure_times:
           type: array
           items:
@@ -575,7 +709,7 @@ components:
           $ref: "#/components/schemas/City"
         destination_city:
           $ref: "#/components/schemas/City"
-      required: [id, price, departure_times, terminal_location, status, departure_city, destination_city]
+      required: [id, price, price_type, departure_times, terminal_location, status, departure_city, destination_city]
 
     CompanyDetail:
       type: object
@@ -659,6 +793,11 @@ components:
           type: integer
         price:
           type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        price_verified_date:
+          type: ["string", "null"]
         departure_times:
           type: array
           items:
@@ -671,7 +810,7 @@ components:
           type: string
         company:
           $ref: "#/components/schemas/SearchRouteCompany"
-      required: [id, price, departure_times, terminal_location, status, company]
+      required: [id, price, price_type, departure_times, terminal_location, status, company]
 
     PopularRoute:
       type: object
@@ -695,9 +834,9 @@ components:
           type: integer
         route_count:
           type: integer
-        unlock_count:
+        user_count:
           type: integer
-      required: [company_count, city_count, route_count, unlock_count]
+      required: [company_count, city_count, route_count, user_count]
 
     ReviewInput:
       type: object
@@ -724,51 +863,147 @@ components:
           type: ["string", "null"]
       required: [traveler_name, traveler_email, company_id, rating_punctuality, rating_comfort, rating_safety, rating_value, rating_professionalism]
 
-    UnlockInitiateInput:
+    UserRegisterInput:
       type: object
       properties:
-        traveler_name:
+        name:
           type: string
-        traveler_email:
+        email:
           type: string
+        phone:
+          type: ["string", "null"]
+        password:
+          type: string
+      required: [name, email, password]
+
+    UserLoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    UserAuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user_id:
+          type: integer
+        name:
+          type: string
+      required: [token, user_id, name]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        created_at:
+          type: string
+      required: [id, name, email, created_at]
+
+    StartConversationInput:
+      type: object
+      properties:
         company_id:
           type: integer
-        route_id:
-          type: integer
-      required: [traveler_name, traveler_email, company_id, route_id]
-
-    UnlockInitiateResponse:
-      type: object
-      properties:
-        reference:
+        initial_message:
           type: string
-        test_mode:
-          type: boolean
-        payment_url:
+        guest_name:
           type: ["string", "null"]
-      required: [reference, test_mode]
+        guest_email:
+          type: ["string", "null"]
+      required: [company_id, initial_message]
 
-    UnlockVerifyInput:
+    StartConversationResponse:
       type: object
       properties:
-        reference:
-          type: string
-        traveler_email:
-          type: string
-      required: [reference, traveler_email]
-
-    UnlockVerifyResponse:
-      type: object
-      properties:
+        conversation_id:
+          type: integer
         company_name:
+          type: ["string", "null"]
+        message:
+          $ref: "#/components/schemas/ChatMessage"
+      required: [conversation_id, message]
+
+    ConversationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        company_id:
+          type: integer
+        company_name:
+          type: ["string", "null"]
+        last_message:
+          type: ["string", "null"]
+        last_message_at:
           type: string
-        contact_type:
+        unread_count:
+          type: integer
+      required: [id, company_id, last_message_at, unread_count]
+
+    OperatorConversationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_name:
           type: string
-        contact_value:
+        guest_email:
+          type: ["string", "null"]
+        last_message:
+          type: ["string", "null"]
+        last_message_at:
           type: string
-        route_summary:
+        unread_count:
+          type: integer
+      required: [id, user_name, last_message_at, unread_count]
+
+    ConversationDetail:
+      type: object
+      properties:
+        conversation_id:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required: [conversation_id, messages]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversation_id:
+          type: integer
+        sender_type:
           type: string
-      required: [company_name, contact_type, contact_value, route_summary]
+          enum: [user, company]
+        sender_name:
+          type: string
+        body:
+          type: string
+        created_at:
+          type: string
+      required: [id, conversation_id, sender_type, sender_name, body, created_at]
+
+    SendMessageInput:
+      type: object
+      properties:
+        body:
+          type: string
+      required: [body]
 
     OperatorLoginInput:
       type: object
@@ -819,6 +1054,11 @@ components:
           $ref: "#/components/schemas/City"
         price:
           type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
+        price_verified_date:
+          type: ["string", "null"]
         departure_times:
           type: array
           items:
@@ -831,7 +1071,7 @@ components:
           type: string
         is_active:
           type: boolean
-      required: [id, departure_city, destination_city, price, departure_times, terminal_location, status, is_active]
+      required: [id, departure_city, destination_city, price, price_type, departure_times, terminal_location, status, is_active]
 
     RouteInput:
       type: object
@@ -842,6 +1082,9 @@ components:
           type: integer
         price:
           type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
         departure_times:
           type: array
           items:
@@ -859,6 +1102,9 @@ components:
       properties:
         price:
           type: integer
+        price_type:
+          type: string
+          enum: [verified, last_seen]
         departure_times:
           type: array
           items:
@@ -891,38 +1137,32 @@ components:
     AdminStats:
       type: object
       properties:
-        total_unlocks:
-          type: integer
-        total_revenue_kobo:
+        total_users:
           type: integer
         total_companies:
           type: integer
         total_operators:
           type: integer
-      required: [total_unlocks, total_revenue_kobo, total_companies, total_operators]
+        total_messages:
+          type: integer
+      required: [total_users, total_companies, total_operators, total_messages]
 
-    AdminUnlock:
+    AdminUser:
       type: object
       properties:
         id:
           type: integer
-        traveler_name:
+        name:
           type: string
-        traveler_email:
+        email:
           type: string
-        company_id:
-          type: integer
-        company_name:
+        phone:
           type: ["string", "null"]
-        amount_paid:
-          type: integer
-        paystack_reference:
-          type: string
-        contact_revealed:
-          type: boolean
         created_at:
           type: string
-      required: [id, traveler_name, traveler_email, company_id, amount_paid, paystack_reference, contact_revealed, created_at]
+        conversation_count:
+          type: integer
+      required: [id, name, email, created_at, conversation_count]
 
     AdminCompany:
       type: object

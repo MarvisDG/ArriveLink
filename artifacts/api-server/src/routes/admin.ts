@@ -2,7 +2,8 @@ import { Router, type IRouter } from "express";
 import {
   checkAdminSecret,
   getAdminStats,
-  getAdminUnlocks,
+  getAdminUsers,
+  deleteUser,
   getAdminCompanies,
   updateCompanyInviteCode,
   updateCompanyFlags,
@@ -25,12 +26,26 @@ router.get("/admin/stats", (req, res) => {
   res.json(getAdminStats());
 });
 
-router.get("/admin/unlocks", (req, res) => {
+router.get("/admin/users", (req, res) => {
   if (!requireAdmin(req)) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  res.json(getAdminUnlocks());
+  res.json(getAdminUsers());
+});
+
+router.delete("/admin/users/:id", (req, res) => {
+  if (!requireAdmin(req)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  try {
+    const id = parseInt(req.params.id ?? "", 10);
+    deleteUser(id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Failed to delete" });
+  }
 });
 
 router.get("/admin/companies", (req, res) => {

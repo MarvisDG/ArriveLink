@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * ArriveLink API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from 'zod';
 
@@ -73,6 +73,8 @@ export const GetCompanyResponse = zod.object({
   "routes": zod.array(zod.object({
   "id": zod.number(),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']),
+  "price_verified_date": zod.string().nullish(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -144,6 +146,8 @@ export const SearchRoutesQueryParams = zod.object({
 export const SearchRoutesResponseItem = zod.object({
   "id": zod.number(),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']),
+  "price_verified_date": zod.string().nullish(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -168,7 +172,7 @@ export const GetPlatformStatsResponse = zod.object({
   "company_count": zod.number(),
   "city_count": zod.number(),
   "route_count": zod.number(),
-  "unlock_count": zod.number()
+  "user_count": zod.number()
 })
 
 
@@ -190,35 +194,97 @@ export const SubmitReviewBody = zod.object({
 
 
 /**
- * @summary Initiate contact unlock
+ * @summary Register a new traveler account
  */
-export const InitiateUnlockBody = zod.object({
-  "traveler_name": zod.string(),
-  "traveler_email": zod.string(),
-  "company_id": zod.number(),
-  "route_id": zod.number()
-})
-
-export const InitiateUnlockResponse = zod.object({
-  "reference": zod.string(),
-  "test_mode": zod.boolean(),
-  "payment_url": zod.string().nullish()
+export const UserRegisterBody = zod.object({
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "password": zod.string()
 })
 
 
 /**
- * @summary Verify payment and reveal contact
+ * @summary Traveler login
  */
-export const VerifyUnlockBody = zod.object({
-  "reference": zod.string(),
-  "traveler_email": zod.string()
+export const UserLoginBody = zod.object({
+  "email": zod.string(),
+  "password": zod.string()
 })
 
-export const VerifyUnlockResponse = zod.object({
-  "company_name": zod.string(),
-  "contact_type": zod.string(),
-  "contact_value": zod.string(),
-  "route_summary": zod.string()
+export const UserLoginResponse = zod.object({
+  "token": zod.string(),
+  "user_id": zod.number(),
+  "name": zod.string()
+})
+
+
+/**
+ * @summary Get current user profile
+ */
+export const GetUserMeResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "created_at": zod.string()
+})
+
+
+/**
+ * @summary Start a conversation with a company
+ */
+export const StartConversationBody = zod.object({
+  "company_id": zod.number(),
+  "initial_message": zod.string(),
+  "guest_name": zod.string().nullish(),
+  "guest_email": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get conversations for current user or operator
+ */
+export const GetConversationsResponseItem = zod.object({
+  "id": zod.number(),
+  "company_id": zod.number(),
+  "company_name": zod.string().nullish(),
+  "last_message": zod.string().nullish(),
+  "last_message_at": zod.string(),
+  "unread_count": zod.number()
+})
+export const GetConversationsResponse = zod.array(GetConversationsResponseItem)
+
+
+/**
+ * @summary Get messages in a conversation
+ */
+export const GetConversationMessagesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetConversationMessagesResponse = zod.object({
+  "conversation_id": zod.number(),
+  "messages": zod.array(zod.object({
+  "id": zod.number(),
+  "conversation_id": zod.number(),
+  "sender_type": zod.enum(['user', 'company']),
+  "sender_name": zod.string(),
+  "body": zod.string(),
+  "created_at": zod.string()
+}))
+})
+
+
+/**
+ * @summary Send a message in a conversation
+ */
+export const SendMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendMessageBody = zod.object({
+  "body": zod.string()
 })
 
 
@@ -271,6 +337,8 @@ export const GetOperatorMeResponse = zod.object({
   "routes": zod.array(zod.object({
   "id": zod.number(),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']),
+  "price_verified_date": zod.string().nullish(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -317,6 +385,8 @@ export const UpdateOperatorCompanyResponse = zod.object({
   "routes": zod.array(zod.object({
   "id": zod.number(),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']),
+  "price_verified_date": zod.string().nullish(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -351,6 +421,8 @@ export const GetOperatorRoutesResponseItem = zod.object({
   "state": zod.string()
 }),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']),
+  "price_verified_date": zod.string().nullish(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -367,6 +439,7 @@ export const AddOperatorRouteBody = zod.object({
   "departure_city_id": zod.number(),
   "destination_city_id": zod.number(),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']).optional(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -383,6 +456,7 @@ export const UpdateOperatorRouteParams = zod.object({
 
 export const UpdateOperatorRouteBody = zod.object({
   "price": zod.number().optional(),
+  "price_type": zod.enum(['verified', 'last_seen']).optional(),
   "departure_times": zod.array(zod.string()).optional(),
   "terminal_location": zod.string().optional(),
   "terminal_address": zod.string().nullish(),
@@ -403,6 +477,8 @@ export const UpdateOperatorRouteResponse = zod.object({
   "state": zod.string()
 }),
   "price": zod.number(),
+  "price_type": zod.enum(['verified', 'last_seen']),
+  "price_verified_date": zod.string().nullish(),
   "departure_times": zod.array(zod.string()),
   "terminal_location": zod.string(),
   "terminal_address": zod.string().nullish(),
@@ -424,31 +500,54 @@ export const DeleteOperatorRouteResponse = zod.object({
 
 
 /**
+ * @summary Get conversations for operator's company
+ */
+export const GetOperatorConversationsResponseItem = zod.object({
+  "id": zod.number(),
+  "user_name": zod.string(),
+  "guest_email": zod.string().nullish(),
+  "last_message": zod.string().nullish(),
+  "last_message_at": zod.string(),
+  "unread_count": zod.number()
+})
+export const GetOperatorConversationsResponse = zod.array(GetOperatorConversationsResponseItem)
+
+
+/**
  * @summary Get admin stats
  */
 export const GetAdminStatsResponse = zod.object({
-  "total_unlocks": zod.number(),
-  "total_revenue_kobo": zod.number(),
+  "total_users": zod.number(),
   "total_companies": zod.number(),
-  "total_operators": zod.number()
+  "total_operators": zod.number(),
+  "total_messages": zod.number()
 })
 
 
 /**
- * @summary Get all unlocks
+ * @summary Get all traveler users
  */
-export const GetAdminUnlocksResponseItem = zod.object({
+export const GetAdminUsersResponseItem = zod.object({
   "id": zod.number(),
-  "traveler_name": zod.string(),
-  "traveler_email": zod.string(),
-  "company_id": zod.number(),
-  "company_name": zod.string().nullish(),
-  "amount_paid": zod.number(),
-  "paystack_reference": zod.string(),
-  "contact_revealed": zod.boolean(),
-  "created_at": zod.string()
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "created_at": zod.string(),
+  "conversation_count": zod.number()
 })
-export const GetAdminUnlocksResponse = zod.array(GetAdminUnlocksResponseItem)
+export const GetAdminUsersResponse = zod.array(GetAdminUsersResponseItem)
+
+
+/**
+ * @summary Delete a user
+ */
+export const DeleteAdminUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteAdminUserResponse = zod.object({
+  "ok": zod.boolean()
+})
 
 
 /**

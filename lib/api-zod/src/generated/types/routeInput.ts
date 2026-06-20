@@ -3,13 +3,15 @@
  * Do not edit manually.
  * Api
  * ArriveLink API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
+import type { RouteInputPriceType } from './routeInputPriceType';
 
 export interface RouteInput {
   departure_city_id: number;
   destination_city_id: number;
   price: number;
+  price_type?: RouteInputPriceType;
   departure_times: string[];
   terminal_location: string;
   /** @nullable */
