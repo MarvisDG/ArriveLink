@@ -4,7 +4,8 @@ import citiesRouter from "./cities";
 import companiesRouter from "./companies";
 import routesRouter from "./routes";
 import reviewsRouter from "./reviews";
-import unlocksRouter from "./unlocks";
+import usersRouter from "./users";
+import messagesRouter from "./messages";
 import operatorRouter from "./operator";
 import adminRouter from "./admin";
 
@@ -15,7 +16,8 @@ router.use(citiesRouter);
 router.use(companiesRouter);
 router.use(routesRouter);
 router.use(reviewsRouter);
-router.use(unlocksRouter);
+router.use(usersRouter);
+router.use(messagesRouter);
 router.use(operatorRouter);
 router.use(adminRouter);
 

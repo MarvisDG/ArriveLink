@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * ArriveLink API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
@@ -30,9 +30,20 @@ export interface FeaturedCompany {
   review_count: number;
 }
 
+export type CompanyRoutePriceType = typeof CompanyRoutePriceType[keyof typeof CompanyRoutePriceType];
+
+
+export const CompanyRoutePriceType = {
+  verified: 'verified',
+  last_seen: 'last_seen',
+} as const;
+
 export interface CompanyRoute {
   id: number;
   price: number;
+  price_type: CompanyRoutePriceType;
+  /** @nullable */
+  price_verified_date?: string | null;
   departure_times: string[];
   terminal_location: string;
   /** @nullable */
@@ -88,9 +99,20 @@ export interface SearchRouteCompany {
   review_count: number;
 }
 
+export type SearchRoutePriceType = typeof SearchRoutePriceType[keyof typeof SearchRoutePriceType];
+
+
+export const SearchRoutePriceType = {
+  verified: 'verified',
+  last_seen: 'last_seen',
+} as const;
+
 export interface SearchRoute {
   id: number;
   price: number;
+  price_type: SearchRoutePriceType;
+  /** @nullable */
+  price_verified_date?: string | null;
   departure_times: string[];
   terminal_location: string;
   /** @nullable */
@@ -110,7 +132,7 @@ export interface PlatformStats {
   company_count: number;
   city_count: number;
   route_count: number;
-  unlock_count: number;
+  user_count: number;
 }
 
 export interface ReviewInput {
@@ -128,30 +150,96 @@ export interface ReviewInput {
   review_text?: string | null;
 }
 
-export interface UnlockInitiateInput {
-  traveler_name: string;
-  traveler_email: string;
-  company_id: number;
-  route_id: number;
-}
-
-export interface UnlockInitiateResponse {
-  reference: string;
-  test_mode: boolean;
+export interface UserRegisterInput {
+  name: string;
+  email: string;
   /** @nullable */
-  payment_url?: string | null;
+  phone?: string | null;
+  password: string;
 }
 
-export interface UnlockVerifyInput {
-  reference: string;
-  traveler_email: string;
+export interface UserLoginInput {
+  email: string;
+  password: string;
 }
 
-export interface UnlockVerifyResponse {
-  company_name: string;
-  contact_type: string;
-  contact_value: string;
-  route_summary: string;
+export interface UserAuthResponse {
+  token: string;
+  user_id: number;
+  name: string;
+}
+
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  /** @nullable */
+  phone?: string | null;
+  created_at: string;
+}
+
+export interface StartConversationInput {
+  company_id: number;
+  initial_message: string;
+  /** @nullable */
+  guest_name?: string | null;
+  /** @nullable */
+  guest_email?: string | null;
+}
+
+export type ChatMessageSenderType = typeof ChatMessageSenderType[keyof typeof ChatMessageSenderType];
+
+
+export const ChatMessageSenderType = {
+  user: 'user',
+  company: 'company',
+} as const;
+
+export interface ChatMessage {
+  id: number;
+  conversation_id: number;
+  sender_type: ChatMessageSenderType;
+  sender_name: string;
+  body: string;
+  created_at: string;
+}
+
+export interface StartConversationResponse {
+  conversation_id: number;
+  /** @nullable */
+  company_name?: string | null;
+  message: ChatMessage;
+}
+
+export interface ConversationSummary {
+  id: number;
+  company_id: number;
+  /** @nullable */
+  company_name?: string | null;
+  /** @nullable */
+  last_message?: string | null;
+  last_message_at: string;
+  unread_count: number;
+}
+
+export interface OperatorConversationSummary {
+  id: number;
+  user_name: string;
+  /** @nullable */
+  guest_email?: string | null;
+  /** @nullable */
+  last_message?: string | null;
+  last_message_at: string;
+  unread_count: number;
+}
+
+export interface ConversationDetail {
+  conversation_id: number;
+  messages: ChatMessage[];
+}
+
+export interface SendMessageInput {
+  body: string;
 }
 
 export interface OperatorLoginInput {
@@ -175,11 +263,22 @@ export interface OperatorProfile {
   company: CompanyDetail;
 }
 
+export type OperatorRoutePriceType = typeof OperatorRoutePriceType[keyof typeof OperatorRoutePriceType];
+
+
+export const OperatorRoutePriceType = {
+  verified: 'verified',
+  last_seen: 'last_seen',
+} as const;
+
 export interface OperatorRoute {
   id: number;
   departure_city: City;
   destination_city: City;
   price: number;
+  price_type: OperatorRoutePriceType;
+  /** @nullable */
+  price_verified_date?: string | null;
   departure_times: string[];
   terminal_location: string;
   /** @nullable */
@@ -188,10 +287,19 @@ export interface OperatorRoute {
   is_active: boolean;
 }
 
+export type RouteInputPriceType = typeof RouteInputPriceType[keyof typeof RouteInputPriceType];
+
+
+export const RouteInputPriceType = {
+  verified: 'verified',
+  last_seen: 'last_seen',
+} as const;
+
 export interface RouteInput {
   departure_city_id: number;
   destination_city_id: number;
   price: number;
+  price_type?: RouteInputPriceType;
   departure_times: string[];
   terminal_location: string;
   /** @nullable */
@@ -199,8 +307,17 @@ export interface RouteInput {
   status?: string;
 }
 
+export type RouteUpdatePriceType = typeof RouteUpdatePriceType[keyof typeof RouteUpdatePriceType];
+
+
+export const RouteUpdatePriceType = {
+  verified: 'verified',
+  last_seen: 'last_seen',
+} as const;
+
 export interface RouteUpdate {
   price?: number;
+  price_type?: RouteUpdatePriceType;
   departure_times?: string[];
   terminal_location?: string;
   /** @nullable */
@@ -225,23 +342,20 @@ export interface CompanyUpdate {
 }
 
 export interface AdminStats {
-  total_unlocks: number;
-  total_revenue_kobo: number;
+  total_users: number;
   total_companies: number;
   total_operators: number;
+  total_messages: number;
 }
 
-export interface AdminUnlock {
+export interface AdminUser {
   id: number;
-  traveler_name: string;
-  traveler_email: string;
-  company_id: number;
+  name: string;
+  email: string;
   /** @nullable */
-  company_name?: string | null;
-  amount_paid: number;
-  paystack_reference: string;
-  contact_revealed: boolean;
+  phone?: string | null;
   created_at: string;
+  conversation_count: number;
 }
 
 export interface AdminCompany {

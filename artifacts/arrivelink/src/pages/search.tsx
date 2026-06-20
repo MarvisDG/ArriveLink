@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, getStatusColor, getStatusLabel, cn } from "@/lib/utils";
 import { StarRating } from "@/components/star-rating";
-import { UnlockContactModal } from "@/components/unlock-contact-modal";
+import { MessageCompanyModal } from "@/components/message-company-modal";
 import { Layout } from "@/components/layout";
 
 export default function Search() {
@@ -267,13 +267,10 @@ export default function Search() {
                             View Company
                           </Link>
                         </Button>
-                        <div className="w-full sm:w-auto">
-                          <UnlockContactModal
-                            companyId={route.company.id}
-                            routeId={route.id}
-                            companyName={route.company.name}
-                          />
-                        </div>
+                        <MessageCompanyModal
+                          companyId={route.company.id}
+                          companyName={route.company.name}
+                        />
                       </div>
                     </div>
                   </div>

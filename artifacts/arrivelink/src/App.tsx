@@ -9,6 +9,8 @@ import Company from "@/pages/company";
 import OperatorLogin from "@/pages/operator-login";
 import OperatorDashboard from "@/pages/operator-dashboard";
 import Admin from "@/pages/admin";
+import AppLogin from "@/pages/app-login";
+import AppDashboard from "@/pages/app-dashboard";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +20,10 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/search" component={Search} />
       <Route path="/company/:id" component={Company} />
+      <Route path="/app/login" component={AppLogin} />
+      <Route path="/app" component={AppDashboard} />
+      <Route path="/business/login" component={OperatorLogin} />
+      <Route path="/business/dashboard" component={OperatorDashboard} />
       <Route path="/operator/login" component={OperatorLogin} />
       <Route path="/operator/dashboard" component={OperatorDashboard} />
       <Route path="/admin" component={Admin} />

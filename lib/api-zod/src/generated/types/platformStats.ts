@@ -3,12 +3,12 @@
  * Do not edit manually.
  * Api
  * ArriveLink API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export interface PlatformStats {
   company_count: number;
   city_count: number;
   route_count: number;
-  unlock_count: number;
+  user_count: number;
 }

@@ -79,8 +79,7 @@ export default function Home() {
             </h1>
             <p className="text-lg sm:text-xl text-primary-foreground/80 mb-10 max-w-xl">
               Compare prices and departure times from real transport companies
-              across Nigeria — then unlock direct WhatsApp access to a company
-              rep for just ₦200.
+              across Nigeria — then message a company rep directly, for free.
             </p>
 
             <div className="bg-white rounded-2xl p-5 shadow-xl max-w-2xl" data-testid="search-form">
@@ -232,13 +231,13 @@ export default function Home() {
                 <div>
                   <div className="text-2xl font-display font-bold text-foreground">
                     {stats ? (
-                      stats.unlock_count
+                      stats.user_count
                     ) : (
                       <Skeleton className="h-7 w-8 inline-block" />
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Contacts unlocked
+                    Travelers registered
                   </div>
                 </div>
               </div>
@@ -346,7 +345,7 @@ export default function Home() {
             How ArriveLink Works
           </h2>
           <p className="text-muted-foreground text-sm mb-10 text-center">
-            Three steps to reach your company rep directly
+            Three steps to find your bus and connect with the company
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {[
@@ -362,8 +361,8 @@ export default function Home() {
               },
               {
                 step: "3",
-                title: "Unlock the rep",
-                desc: "Pay ₦200 to get direct WhatsApp access to a verified company rep. Book your seat before you leave home.",
+                title: "Message the company",
+                desc: "Send a free message to any company rep directly. Ask about availability, prices, or departure times — no fees.",
               },
             ].map((item) => (
               <div

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
   Users,
-  Unlock,
+  MessageSquare,
   Building2,
   LogOut,
   RefreshCw,
@@ -178,14 +178,14 @@ function AdminDashboard({
       <main className="max-w-6xl mx-auto p-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
-            icon={<Unlock className="h-5 w-5 text-blue-500" />}
-            label="Total Unlocks"
-            value={stats?.total_unlocks ?? "—"}
+            icon={<Users className="h-5 w-5 text-blue-500" />}
+            label="Total Users"
+            value={stats?.total_users ?? "—"}
           />
           <StatCard
-            icon={<BarChart3 className="h-5 w-5 text-green-500" />}
-            label="Revenue"
-            value={stats ? formatNaira(stats.total_revenue_kobo) : "—"}
+            icon={<MessageSquare className="h-5 w-5 text-green-500" />}
+            label="Messages"
+            value={stats?.total_messages ?? "—"}
           />
           <StatCard
             icon={<Building2 className="h-5 w-5 text-purple-500" />}
@@ -193,21 +193,21 @@ function AdminDashboard({
             value={stats?.total_companies ?? "—"}
           />
           <StatCard
-            icon={<Users className="h-5 w-5 text-orange-500" />}
+            icon={<BarChart3 className="h-5 w-5 text-orange-500" />}
             label="Operators"
             value={stats?.total_operators ?? "—"}
           />
         </div>
 
-        <Tabs defaultValue="unlocks">
+        <Tabs defaultValue="users">
           <TabsList>
-            <TabsTrigger value="unlocks">Unlocks</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="companies">Companies</TabsTrigger>
             <TabsTrigger value="operators">Operators</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="unlocks">
-            <UnlocksTab toast={toast} />
+          <TabsContent value="users">
+            <UsersTab toast={toast} />
           </TabsContent>
           <TabsContent value="companies">
             <CompaniesTab toast={toast} />
@@ -243,20 +243,33 @@ function StatCard({
   );
 }
 
-function UnlocksTab({
-  toast: _toast,
+function UsersTab({
+  toast,
 }: {
   toast: ReturnType<typeof useToast>["toast"];
 }) {
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery<any[]>({
-    queryKey: ["admin-unlocks"],
-    queryFn: () => adminFetch("/admin/unlocks"),
+    queryKey: ["admin-users"],
+    queryFn: () => adminFetch("/admin/users"),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: (id: number) =>
+      adminFetch(`/admin/users/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-stats"] });
+      toast({ title: "User removed" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   if (isLoading)
     return <p className="text-sm text-muted-foreground p-4">Loading…</p>;
   if (!data?.length)
-    return <p className="text-sm text-muted-foreground p-4">No unlocks yet.</p>;
+    return <p className="text-sm text-muted-foreground p-4">No registered users yet.</p>;
 
   return (
     <Card>
@@ -264,12 +277,11 @@ function UnlocksTab({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Traveler</th>
-              <th className="text-left p-3 font-medium">Company</th>
-              <th className="text-left p-3 font-medium">Amount</th>
-              <th className="text-left p-3 font-medium">Reference</th>
-              <th className="text-left p-3 font-medium">Revealed</th>
-              <th className="text-left p-3 font-medium">Date</th>
+              <th className="text-left p-3 font-medium">Name</th>
+              <th className="text-left p-3 font-medium">Email</th>
+              <th className="text-left p-3 font-medium">Phone</th>
+              <th className="text-left p-3 font-medium">Joined</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -278,33 +290,24 @@ function UnlocksTab({
                 key={u.id}
                 className="border-b hover:bg-muted/30 transition-colors"
               >
-                <td className="p-3">
-                  <p className="font-medium">{u.traveler_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {u.traveler_email}
-                  </p>
-                </td>
-                <td className="p-3">{u.company_name ?? "—"}</td>
-                <td className="p-3 text-green-700 font-medium">
-                  {formatNaira(u.amount_paid)}
-                </td>
-                <td className="p-3 font-mono text-xs">
-                  {u.paystack_reference}
-                </td>
-                <td className="p-3">
-                  {u.contact_revealed ? (
-                    <Badge
-                      variant="default"
-                      className="bg-green-100 text-green-800 border-green-200"
-                    >
-                      Yes
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">No</Badge>
-                  )}
-                </td>
+                <td className="p-3 font-medium">{u.name}</td>
+                <td className="p-3 text-muted-foreground">{u.email}</td>
+                <td className="p-3 text-muted-foreground">{u.phone ?? "—"}</td>
                 <td className="p-3 text-muted-foreground">
                   {formatDate(u.created_at)}
+                </td>
+                <td className="p-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      if (confirm(`Remove user ${u.email}?`))
+                        deleteUser.mutate(u.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </td>
               </tr>
             ))}
