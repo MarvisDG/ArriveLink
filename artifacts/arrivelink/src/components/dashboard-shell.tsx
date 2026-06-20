@@ -157,8 +157,11 @@ function SidebarItem({
     <button
       className={cls}
       onClick={() => {
-        item.onClick?.();
-        onNavClick(item.key);
+        if (item.onClick) {
+          item.onClick();
+        } else {
+          onNavClick(item.key);
+        }
       }}
     >
       <span className="shrink-0 w-4 h-4 flex items-center justify-center">{item.icon}</span>

@@ -47,7 +47,6 @@ export default function OperatorLogin() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupCompanyId, setSignupCompanyId] = useState("");
-  const [signupInviteCode, setSignupInviteCode] = useState("");
 
   const { data: companies } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["companies-list"],
@@ -63,7 +62,7 @@ export default function OperatorLogin() {
         password: loginPassword,
       });
       localStorage.setItem("operator_token", data.token);
-      navigate("/operator/dashboard");
+      navigate("/business/dashboard");
     } catch (err: unknown) {
       toast({
         title: "Login failed",
@@ -92,10 +91,9 @@ export default function OperatorLogin() {
         email: signupEmail,
         password: signupPassword,
         company_id: parseInt(signupCompanyId),
-        invite_code: signupInviteCode,
       });
       localStorage.setItem("operator_token", data.token);
-      navigate("/operator/dashboard");
+      navigate("/business/dashboard");
     } catch (err: unknown) {
       toast({
         title: "Sign up failed",
@@ -253,21 +251,6 @@ export default function OperatorLogin() {
                         )}
                       </button>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-invite">Invite Code</Label>
-                    <Input
-                      id="signup-invite"
-                      type="text"
-                      placeholder="Provided by ArriveLink"
-                      value={signupInviteCode}
-                      onChange={(e) => setSignupInviteCode(e.target.value)}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Your company's unique code — contact ArriveLink if you
-                      don't have one
-                    </p>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? (

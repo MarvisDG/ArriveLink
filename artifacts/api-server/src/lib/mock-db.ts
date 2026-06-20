@@ -690,11 +690,9 @@ export function operatorSignup(data: {
   email: string;
   password: string;
   company_id: number;
-  invite_code: string;
 }) {
   const company = companies.find((c) => c.id === data.company_id);
   if (!company) throw new Error("Company not found");
-  if (company.invite_code !== data.invite_code) throw new Error("Invalid invite code");
   if (operators.some((o) => o.email === data.email)) throw new Error("Email already registered");
 
   const operator: Operator = {
