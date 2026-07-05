@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, CheckCircle2, XCircle, AlertTriangle, Loader2, Bus, ArrowRight } from "lucide-react";
@@ -27,30 +27,51 @@ interface BookingDetail {
   total_fare: number;
 }
 
-function useCountdown(deadline: string | null) {
-  const [remaining, setRemaining] = useState<number>(0);
+function useCountdown(deadline: string | null, onExpire?: () => void) {
+  const [remaining, setRemaining] = useState<number>(
+    deadline ? Math.max(0, new Date(deadline).getTime() - Date.now()) : 0
+  );
+  const expiredRef = useRef(false);
+
   useEffect(() => {
     if (!deadline) return;
+    expiredRef.current = false;
     const update = () => {
-      setRemaining(Math.max(0, new Date(deadline).getTime() - Date.now()));
+      const r = Math.max(0, new Date(deadline).getTime() - Date.now());
+      setRemaining(r);
+      if (r === 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        onExpire?.();
+      }
     };
     update();
     const iv = setInterval(update, 1000);
     return () => clearInterval(iv);
   }, [deadline]);
+
   const mins = Math.floor(remaining / 60000);
   const secs = Math.floor((remaining % 60000) / 1000);
   return { remaining, mins, secs };
 }
 
-function CountdownRing({ deadline, color = "text-primary" }: { deadline: string; color?: string }) {
-  const { remaining, mins, secs } = useCountdown(deadline);
-  const totalMs = new Date(deadline).getTime() - remaining;
-  const elapsed = Date.now() - totalMs;
-  const pct = Math.max(0, Math.min(1, 1 - remaining / (10 * 60 * 1000)));
+const RESPONSE_WINDOW_MS = 10 * 60 * 1000;
+
+function CountdownRing({
+  deadline,
+  color = "text-primary",
+  onExpire,
+}: {
+  deadline: string;
+  color?: string;
+  onExpire?: () => void;
+}) {
+  const { remaining, mins, secs } = useCountdown(deadline, onExpire);
+  const pct = Math.max(0, Math.min(1, 1 - remaining / RESPONSE_WINDOW_MS));
   const r = 40;
   const circ = 2 * Math.PI * r;
   const dashOffset = circ * pct;
+  const isUrgent = remaining < 120000 && remaining > 0;
+  const isDone = remaining === 0;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -63,12 +84,12 @@ function CountdownRing({ deadline, color = "text-primary" }: { deadline: string;
             strokeDasharray={circ}
             strokeDashoffset={dashOffset}
             strokeLinecap="round"
-            className={remaining < 120000 ? "text-red-500" : color}
+            className={isDone ? "text-muted/30" : isUrgent ? "text-red-500" : color}
             style={{ transition: "stroke-dashoffset 1s linear" }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center flex-col">
-          <span className={`text-2xl font-bold font-mono tabular-nums ${remaining < 120000 ? "text-red-500" : ""}`}>
+          <span className={`text-2xl font-bold font-mono tabular-nums ${isUrgent ? "text-red-500" : isDone ? "text-muted-foreground" : ""}`}>
             {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
           </span>
         </div>
@@ -82,7 +103,7 @@ export default function BookingAwaiting() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const [, navigate] = useLocation();
 
-  const { data: booking, isLoading } = useQuery<BookingDetail>({
+  const { data: booking, isLoading, refetch } = useQuery<BookingDetail>({
     queryKey: ["booking", bookingId],
     queryFn: () => fetch(`${API_BASE}/bookings/${bookingId}`).then((r) => r.json()),
     refetchInterval: 4000,
@@ -106,7 +127,7 @@ export default function BookingAwaiting() {
     );
   }
 
-  if (!booking) {
+  if (!booking || (booking as any).error) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
@@ -116,9 +137,6 @@ export default function BookingAwaiting() {
       </Layout>
     );
   }
-
-  const isTerminal = ["REJECTED", "CANCELLED_TIMEOUT"].includes(booking.status);
-  const isSuccess = ["AWAITING_PAYMENT", "PAID", "TICKET_ISSUED", "BOARDED"].includes(booking.status);
 
   return (
     <Layout>
@@ -141,19 +159,26 @@ export default function BookingAwaiting() {
         <div className="flex-1 container mx-auto px-4 max-w-lg py-10 flex flex-col items-center gap-8">
           {booking.status === "AWAITING_RESPONSE" && (
             <>
-              <CountdownRing deadline={booking.response_deadline} />
+              <CountdownRing
+                deadline={booking.response_deadline}
+                onExpire={() => {
+                  setTimeout(() => refetch(), 500);
+                }}
+              />
               <div className="text-center space-y-2">
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   <h2 className="font-semibold text-lg">Waiting for confirmation</h2>
                 </div>
                 <p className="text-muted-foreground text-sm max-w-sm">
-                  The operator rep has been notified. They have 10 minutes to accept or decline your request.
-                  This page will update automatically.
+                  The operator rep has been notified. They have 10 minutes to accept or decline your
+                  request. This page will update automatically.
                 </p>
               </div>
               <div className="w-full bg-card border rounded-2xl p-5 space-y-3">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Your Request</h3>
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+                  Your Request
+                </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Name</span>
@@ -177,9 +202,7 @@ export default function BookingAwaiting() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-center text-muted-foreground">
-                Booking #{booking.id}
-              </p>
+              <p className="text-xs text-center text-muted-foreground">Booking #{booking.id}</p>
             </>
           )}
 
@@ -199,9 +222,12 @@ export default function BookingAwaiting() {
               <XCircle className="w-16 h-16 text-destructive mx-auto" />
               <h2 className="font-bold text-xl">Request Declined</h2>
               <p className="text-muted-foreground text-sm max-w-sm">
-                Unfortunately, the operator couldn't accommodate your request. Try another operator for the same route.
+                Unfortunately, the operator couldn't accommodate your request. Try another operator
+                for the same route.
               </p>
-              <Button asChild variant="outline"><Link href="/">Search Again</Link></Button>
+              <Button asChild variant="outline">
+                <Link href="/">Search Again</Link>
+              </Button>
             </div>
           )}
 
@@ -210,13 +236,16 @@ export default function BookingAwaiting() {
               <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto" />
               <h2 className="font-bold text-xl">Request Timed Out</h2>
               <p className="text-muted-foreground text-sm max-w-sm">
-                The operator didn't respond in time. Your seat was not reserved. Please try again.
+                The operator didn't respond within 10 minutes. Your seat was not reserved. Please
+                try a different time or operator.
               </p>
-              <Button asChild variant="outline"><Link href="/">Search Again</Link></Button>
+              <Button asChild variant="outline">
+                <Link href="/">Search Again</Link>
+              </Button>
             </div>
           )}
 
-          {["TICKET_ISSUED", "BOARDED"].includes(booking.status) && (
+          {["TICKET_ISSUED", "BOARDED", "COMPLETED"].includes(booking.status) && (
             <div className="text-center space-y-4">
               <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
               <h2 className="font-bold text-xl">You're all set!</h2>

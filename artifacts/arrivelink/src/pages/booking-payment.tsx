@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
-  CreditCard, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Shield,
+  CreditCard, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Shield, XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
@@ -28,15 +28,30 @@ interface BookingDetail {
   total_fare: number;
 }
 
-function useCountdown(deadline: string | null) {
-  const [remaining, setRemaining] = useState<number>(0);
+const PAYMENT_WINDOW_MS = 25 * 60 * 1000;
+
+function useCountdown(deadline: string | null, onExpire?: () => void) {
+  const [remaining, setRemaining] = useState<number>(
+    deadline ? Math.max(0, new Date(deadline).getTime() - Date.now()) : 0
+  );
+  const expiredRef = useRef(false);
+
   useEffect(() => {
     if (!deadline) return;
-    const update = () => setRemaining(Math.max(0, new Date(deadline).getTime() - Date.now()));
+    expiredRef.current = false;
+    const update = () => {
+      const r = Math.max(0, new Date(deadline).getTime() - Date.now());
+      setRemaining(r);
+      if (r === 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        onExpire?.();
+      }
+    };
     update();
     const iv = setInterval(update, 1000);
     return () => clearInterval(iv);
   }, [deadline]);
+
   const mins = Math.floor(remaining / 60000);
   const secs = Math.floor((remaining % 60000) / 1000);
   return { remaining, mins, secs };
@@ -55,12 +70,18 @@ export default function BookingPayment() {
     enabled: !!bookingId,
   });
 
-  const { remaining, mins, secs } = useCountdown(booking?.payment_deadline ?? null);
+  const { remaining, mins, secs } = useCountdown(
+    booking?.payment_deadline ?? null,
+    () => setTimeout(() => refetch(), 500)
+  );
 
   useEffect(() => {
     if (!booking) return;
     if (booking.status === "TICKET_ISSUED" || booking.status === "BOARDED") {
       navigate(`/booking/ticket/${booking.id}`);
+    }
+    if (booking.status === "AWAITING_RESPONSE" || booking.status === "CONFIRMED") {
+      navigate(`/booking/awaiting/${booking.id}`);
     }
   }, [booking?.status, navigate]);
 
@@ -89,7 +110,7 @@ export default function BookingPayment() {
     );
   }
 
-  if (!booking) {
+  if (!booking || (booking as any).error) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
@@ -107,9 +128,28 @@ export default function BookingPayment() {
           <AlertTriangle className="w-16 h-16 text-amber-500" />
           <div className="text-center">
             <h2 className="font-bold text-xl mb-2">Payment Window Expired</h2>
-            <p className="text-muted-foreground text-sm">Your seat reservation has been released. Please start a new booking.</p>
+            <p className="text-muted-foreground text-sm">
+              Your seat reservation was released after 25 minutes. Please start a new booking.
+            </p>
           </div>
           <Button asChild><Link href="/">Search Routes</Link></Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (booking.status === "REJECTED") {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center flex-col gap-6 px-4">
+          <XCircle className="w-16 h-16 text-destructive" />
+          <div className="text-center">
+            <h2 className="font-bold text-xl mb-2">Request Was Declined</h2>
+            <p className="text-muted-foreground text-sm">
+              This booking request was declined by the operator. Please search for another bus.
+            </p>
+          </div>
+          <Button asChild variant="outline"><Link href="/">Search Routes</Link></Button>
         </div>
       </Layout>
     );
@@ -138,18 +178,43 @@ export default function BookingPayment() {
 
         <div className="container mx-auto px-4 max-w-lg py-8 space-y-5">
           {booking.payment_deadline && (
-            <div className={`rounded-xl border px-4 py-3 flex items-center justify-between ${
-              remaining < 300000 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
-            }`}>
+            <div
+              className={`rounded-xl border px-4 py-3 flex items-center justify-between ${
+                isExpired
+                  ? "bg-red-50 border-red-300"
+                  : remaining < 300000
+                  ? "bg-red-50 border-red-200"
+                  : "bg-amber-50 border-amber-200"
+              }`}
+            >
               <div className="flex items-center gap-2">
-                <AlertTriangle className={`w-4 h-4 ${remaining < 300000 ? "text-red-500" : "text-amber-500"}`} />
-                <span className={`text-sm font-medium ${remaining < 300000 ? "text-red-700" : "text-amber-700"}`}>
-                  Payment window closing
+                <AlertTriangle
+                  className={`w-4 h-4 ${
+                    isExpired || remaining < 300000 ? "text-red-500" : "text-amber-500"
+                  }`}
+                />
+                <span
+                  className={`text-sm font-medium ${
+                    isExpired
+                      ? "text-red-700"
+                      : remaining < 300000
+                      ? "text-red-700"
+                      : "text-amber-700"
+                  }`}
+                >
+                  {isExpired ? "Payment window closed — refreshing…" : "Payment window closing"}
                 </span>
               </div>
-              <span className={`font-bold font-mono text-lg tabular-nums ${remaining < 300000 ? "text-red-600" : "text-amber-600"}`}>
-                {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
-              </span>
+              {!isExpired && (
+                <span
+                  className={`font-bold font-mono text-lg tabular-nums ${
+                    remaining < 300000 ? "text-red-600" : "text-amber-600"
+                  }`}
+                >
+                  {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+                </span>
+              )}
+              {isExpired && <Loader2 className="w-4 h-4 animate-spin text-red-500" />}
             </div>
           )}
 
@@ -219,6 +284,8 @@ export default function BookingPayment() {
             >
               {paying ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing...</>
+              ) : isExpired ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking status...</>
               ) : (
                 <><CreditCard className="w-4 h-4 mr-2" /> Simulate Payment</>
               )}
