@@ -5,6 +5,8 @@ import {
   Loader2, Building2, Route, ToggleLeft, ToggleRight,
   LayoutDashboard, MessageSquare, Settings, TrendingUp,
   Star, MapPin, Clock, ChevronLeft, Send, Activity,
+  Inbox, BookOpen, ScanLine, Wallet, Check, X, Users, AlertTriangle,
+  ArrowRight, Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -337,10 +339,20 @@ export default function OperatorDashboard() {
 
   const companyInitials = company.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
+  const { data: pendingRequests } = useQuery<unknown[]>({
+    queryKey: ["operator", "booking-requests"],
+    queryFn: () => apiFetch("/operator/bookings/requests"),
+    enabled: !!meData,
+    refetchInterval: 15000,
+  });
+
   const navItems: NavItem[] = [
     { key: "dashboard", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { key: "requests", label: "Requests", icon: <Inbox className="h-4 w-4" />, badge: pendingRequests?.length ?? 0 },
+    { key: "bookings", label: "Active Bookings", icon: <BookOpen className="h-4 w-4" /> },
+    { key: "boarding", label: "Boarding", icon: <ScanLine className="h-4 w-4" /> },
+    { key: "wallet", label: "Wallet", icon: <Wallet className="h-4 w-4" /> },
     { key: "routes", label: "Routes & Pricing", icon: <Route className="h-4 w-4" /> },
-    { key: "messages", label: "Messages", icon: <MessageSquare className="h-4 w-4" />, badge: 3 },
     { key: "profile", label: "Company Profile", icon: <Building2 className="h-4 w-4" /> },
   ];
 
@@ -350,9 +362,13 @@ export default function OperatorDashboard() {
 
   const sectionTitles: Record<string, string> = {
     dashboard: "Dashboard",
+    requests: "Reservation Requests",
+    bookings: "Active Bookings",
+    boarding: "Boarding",
+    wallet: "Wallet",
     routes: "Routes & Pricing",
-    messages: "Messages",
     profile: "Company Profile",
+    messages: "Messages",
   };
 
   return (
@@ -377,6 +393,18 @@ export default function OperatorDashboard() {
             activeRoutes={activeRoutes}
             routeStatusData={routeStatusData}
           />
+        )}
+        {activeSection === "requests" && (
+          <RequestsSection companyId={company.id} />
+        )}
+        {activeSection === "bookings" && (
+          <ActiveBookingsSection companyId={company.id} />
+        )}
+        {activeSection === "boarding" && (
+          <BoardingSection companyId={company.id} />
+        )}
+        {activeSection === "wallet" && (
+          <WalletSection companyId={company.id} />
         )}
         {activeSection === "routes" && (
           <RoutesSection
