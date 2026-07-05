@@ -11,6 +11,11 @@ import OperatorDashboard from "@/pages/operator-dashboard";
 import Admin from "@/pages/admin";
 import AppLogin from "@/pages/app-login";
 import AppDashboard from "@/pages/app-dashboard";
+import BookingRequest from "@/pages/booking-request";
+import BookingAwaiting from "@/pages/booking-awaiting";
+import BookingPayment from "@/pages/booking-payment";
+import BookingTicket from "@/pages/booking-ticket";
+import Bookings from "@/pages/bookings";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +32,11 @@ function Router() {
       <Route path="/operator/login" component={OperatorLogin} />
       <Route path="/operator/dashboard" component={OperatorDashboard} />
       <Route path="/admin" component={Admin} />
+      <Route path="/booking/request/:routeId" component={BookingRequest} />
+      <Route path="/booking/awaiting/:bookingId" component={BookingAwaiting} />
+      <Route path="/booking/payment/:bookingId" component={BookingPayment} />
+      <Route path="/booking/ticket/:bookingId" component={BookingTicket} />
+      <Route path="/bookings" component={Bookings} />
       <Route component={NotFound} />
     </Switch>
   );

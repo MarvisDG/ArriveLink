@@ -843,3 +843,343 @@ export function deleteOperator(id: number) {
   if (index === -1) throw new Error("Operator not found");
   operators.splice(index, 1);
 }
+
+// ── BOOKING STATE MACHINE ─────────────────────────────────────────────────
+
+export type BookingStatus =
+  | "AWAITING_RESPONSE"
+  | "CONFIRMED"
+  | "REJECTED"
+  | "AWAITING_PAYMENT"
+  | "PAID"
+  | "TICKET_ISSUED"
+  | "BOARDED"
+  | "COMPLETED"
+  | "CANCELLED_TIMEOUT";
+
+export interface Booking {
+  id: number;
+  route_id: number;
+  traveler_id: number | null;
+  traveler_name: string;
+  traveler_phone: string;
+  seats_requested: number;
+  departure_time: string;
+  status: BookingStatus;
+  requested_at: string;
+  response_deadline: string;
+  payment_deadline: string | null;
+  confirmed_at: string | null;
+  paid_at: string | null;
+  boarded_at: string | null;
+}
+
+export interface Ticket {
+  id: number;
+  booking_id: number;
+  ticket_code: string;
+  issued_at: string;
+}
+
+const CONVENIENCE_FEE = 20000;
+
+const bookings: Booking[] = [
+  {
+    id: 1,
+    route_id: 1,
+    traveler_id: 1,
+    traveler_name: "Ada Okafor",
+    traveler_phone: "+2348012345678",
+    seats_requested: 1,
+    departure_time: "09:00",
+    status: "TICKET_ISSUED",
+    requested_at: "2026-07-04T08:00:00Z",
+    response_deadline: "2026-07-04T08:10:00Z",
+    payment_deadline: "2026-07-04T08:35:00Z",
+    confirmed_at: "2026-07-04T08:05:00Z",
+    paid_at: "2026-07-04T08:20:00Z",
+    boarded_at: null,
+  },
+  {
+    id: 2,
+    route_id: 2,
+    traveler_id: null,
+    traveler_name: "Emeka Obi",
+    traveler_phone: "+2348055551234",
+    seats_requested: 2,
+    departure_time: "07:00",
+    status: "AWAITING_RESPONSE",
+    requested_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+    response_deadline: new Date(Date.now() + 8 * 60 * 1000).toISOString(),
+    payment_deadline: null,
+    confirmed_at: null,
+    paid_at: null,
+    boarded_at: null,
+  },
+];
+
+const tickets: Ticket[] = [
+  {
+    id: 1,
+    booking_id: 1,
+    ticket_code: "AL-2026-DEMO1",
+    issued_at: "2026-07-04T08:20:00Z",
+  },
+];
+
+let nextBookingId = 3;
+let nextTicketId = 2;
+
+function generateTicketCode() {
+  const year = new Date().getFullYear();
+  const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `AL-${year}-${rand}`;
+}
+
+function cancelExpiredBookings() {
+  const now = Date.now();
+  for (const b of bookings) {
+    if (b.status === "AWAITING_RESPONSE" && new Date(b.response_deadline).getTime() < now) {
+      b.status = "CANCELLED_TIMEOUT";
+    }
+    if (b.status === "AWAITING_PAYMENT" && b.payment_deadline && new Date(b.payment_deadline).getTime() < now) {
+      b.status = "CANCELLED_TIMEOUT";
+    }
+  }
+}
+
+function enrichBooking(booking: Booking) {
+  const route = routes.find((r) => r.id === booking.route_id);
+  const company = route ? companies.find((c) => c.id === route.company_id) : null;
+  const ticket = tickets.find((t) => t.booking_id === booking.id) ?? null;
+  return {
+    ...booking,
+    route: route
+      ? {
+          id: route.id,
+          price: route.price,
+          departure_times: route.departure_times,
+          terminal_location: route.terminal_location,
+          terminal_address: route.terminal_address,
+          departure_city: getCity(route.departure_city_id) ?? null,
+          destination_city: getCity(route.destination_city_id) ?? null,
+        }
+      : null,
+    company: company ? { id: company.id, name: company.name, logo_url: company.logo_url } : null,
+    ticket,
+    convenience_fee: CONVENIENCE_FEE,
+    total_fare: route ? route.price * booking.seats_requested + CONVENIENCE_FEE : CONVENIENCE_FEE,
+  };
+}
+
+export function getRouteDetail(routeId: number) {
+  const route = routes.find((r) => r.id === routeId && r.is_active);
+  if (!route) return null;
+  const company = companies.find((c) => c.id === route.company_id);
+  return {
+    ...route,
+    departure_city: getCity(route.departure_city_id) ?? null,
+    destination_city: getCity(route.destination_city_id) ?? null,
+    company: company
+      ? { id: company.id, name: company.name, logo_url: company.logo_url, is_verified: company.is_verified }
+      : null,
+  };
+}
+
+export function createBooking(data: {
+  route_id: number;
+  traveler_id?: number;
+  traveler_name: string;
+  traveler_phone: string;
+  seats_requested: number;
+  departure_time: string;
+}) {
+  cancelExpiredBookings();
+  const route = routes.find((r) => r.id === data.route_id && r.is_active);
+  if (!route) throw new Error("Route not found or inactive");
+  if (data.seats_requested < 1 || data.seats_requested > 6) throw new Error("Seats must be between 1 and 6");
+
+  const now = new Date();
+  const booking: Booking = {
+    id: nextBookingId++,
+    route_id: data.route_id,
+    traveler_id: data.traveler_id ?? null,
+    traveler_name: data.traveler_name.trim(),
+    traveler_phone: data.traveler_phone.trim(),
+    seats_requested: data.seats_requested,
+    departure_time: data.departure_time,
+    status: "AWAITING_RESPONSE",
+    requested_at: now.toISOString(),
+    response_deadline: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+    payment_deadline: null,
+    confirmed_at: null,
+    paid_at: null,
+    boarded_at: null,
+  };
+  bookings.push(booking);
+  return enrichBooking(booking);
+}
+
+export function getBookingDetail(bookingId: number) {
+  cancelExpiredBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking) return null;
+  return enrichBooking(booking);
+}
+
+export function getTravelerBookings(travelerPhone: string) {
+  cancelExpiredBookings();
+  return bookings
+    .filter((b) => b.traveler_phone === travelerPhone)
+    .sort((a, b) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime())
+    .map(enrichBooking);
+}
+
+export function getOperatorBookingRequests(companyId: number) {
+  cancelExpiredBookings();
+  return bookings
+    .filter((b) => {
+      const route = routes.find((r) => r.id === b.route_id);
+      return route?.company_id === companyId && b.status === "AWAITING_RESPONSE";
+    })
+    .sort((a, b) => new Date(a.response_deadline).getTime() - new Date(b.response_deadline).getTime())
+    .map(enrichBooking);
+}
+
+export function acceptBookingRequest(bookingId: number, companyId: number) {
+  cancelExpiredBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking) throw new Error("Booking not found");
+  const route = routes.find((r) => r.id === booking.route_id);
+  if (route?.company_id !== companyId) throw new Error("Not authorized");
+  if (booking.status !== "AWAITING_RESPONSE") throw new Error("Booking is no longer pending");
+
+  const now = new Date();
+  booking.status = "AWAITING_PAYMENT";
+  booking.confirmed_at = now.toISOString();
+  booking.payment_deadline = new Date(now.getTime() + 25 * 60 * 1000).toISOString();
+  return enrichBooking(booking);
+}
+
+export function rejectBookingRequest(bookingId: number, companyId: number) {
+  cancelExpiredBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking) throw new Error("Booking not found");
+  const route = routes.find((r) => r.id === booking.route_id);
+  if (route?.company_id !== companyId) throw new Error("Not authorized");
+  if (booking.status !== "AWAITING_RESPONSE") throw new Error("Booking is no longer pending");
+
+  booking.status = "REJECTED";
+  return enrichBooking(booking);
+}
+
+export function payBooking(bookingId: number) {
+  cancelExpiredBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking) throw new Error("Booking not found");
+  if (booking.status !== "AWAITING_PAYMENT") {
+    throw new Error(`Cannot pay booking with status: ${booking.status}`);
+  }
+
+  const now = new Date();
+  booking.paid_at = now.toISOString();
+
+  const ticket: Ticket = {
+    id: nextTicketId++,
+    booking_id: booking.id,
+    ticket_code: generateTicketCode(),
+    issued_at: now.toISOString(),
+  };
+  tickets.push(ticket);
+  booking.status = "TICKET_ISSUED";
+  return enrichBooking(booking);
+}
+
+export function getOperatorActiveBookings(companyId: number) {
+  cancelExpiredBookings();
+  const activeStatuses: BookingStatus[] = ["AWAITING_PAYMENT", "TICKET_ISSUED"];
+  return bookings
+    .filter((b) => {
+      const route = routes.find((r) => r.id === b.route_id);
+      return route?.company_id === companyId && activeStatuses.includes(b.status);
+    })
+    .sort((a, b) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime())
+    .map(enrichBooking);
+}
+
+export function boardBooking(bookingId: number, companyId: number) {
+  cancelExpiredBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+  if (!booking) throw new Error("Booking not found");
+  const route = routes.find((r) => r.id === booking.route_id);
+  if (route?.company_id !== companyId) throw new Error("Not authorized");
+  if (booking.status !== "TICKET_ISSUED") throw new Error("Traveler has not paid yet");
+
+  booking.status = "BOARDED";
+  booking.boarded_at = new Date().toISOString();
+  return enrichBooking(booking);
+}
+
+export function searchBookingForBoarding(query: string, companyId: number) {
+  cancelExpiredBookings();
+  const ticketMatch = tickets.find(
+    (t) => t.ticket_code.toLowerCase() === query.toLowerCase()
+  );
+  if (ticketMatch) {
+    const b = bookings.find((bk) => bk.id === ticketMatch.booking_id);
+    if (b) {
+      const route = routes.find((r) => r.id === b.route_id);
+      if (route?.company_id === companyId) return enrichBooking(b);
+    }
+  }
+  const found = bookings.find((b) => {
+    const route = routes.find((r) => r.id === b.route_id);
+    if (route?.company_id !== companyId) return false;
+    return (
+      b.traveler_name.toLowerCase().includes(query.toLowerCase()) ||
+      b.traveler_phone.includes(query)
+    );
+  });
+  return found ? enrichBooking(found) : null;
+}
+
+export function getOperatorWallet(companyId: number) {
+  cancelExpiredBookings();
+  const pendingStatuses: BookingStatus[] = ["TICKET_ISSUED"];
+  const availableStatuses: BookingStatus[] = ["BOARDED", "COMPLETED"];
+
+  const companyBookings = bookings.filter((b) => {
+    const route = routes.find((r) => r.id === b.route_id);
+    return route?.company_id === companyId;
+  });
+
+  let pending_balance = 0;
+  let available_balance = 0;
+  for (const b of companyBookings) {
+    const route = routes.find((r) => r.id === b.route_id);
+    if (!route) continue;
+    const fare = route.price * b.seats_requested;
+    if (pendingStatuses.includes(b.status)) pending_balance += fare;
+    if (availableStatuses.includes(b.status)) available_balance += fare;
+  }
+
+  const recent = companyBookings
+    .filter((b) => ["TICKET_ISSUED", "BOARDED", "COMPLETED"].includes(b.status))
+    .sort((a, b) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime())
+    .slice(0, 20)
+    .map(enrichBooking);
+
+  return { pending_balance, available_balance, recent_transactions: recent };
+}
+
+export function getAdminBookingStats() {
+  cancelExpiredBookings();
+  return {
+    total: bookings.length,
+    awaiting_response: bookings.filter((b) => b.status === "AWAITING_RESPONSE").length,
+    awaiting_payment: bookings.filter((b) => b.status === "AWAITING_PAYMENT").length,
+    ticket_issued: bookings.filter((b) => b.status === "TICKET_ISSUED").length,
+    boarded: bookings.filter((b) => b.status === "BOARDED").length,
+    cancelled: bookings.filter((b) => ["CANCELLED_TIMEOUT", "REJECTED"].includes(b.status)).length,
+  };
+}

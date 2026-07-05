@@ -8,6 +8,7 @@ import usersRouter from "./users";
 import messagesRouter from "./messages";
 import operatorRouter from "./operator";
 import adminRouter from "./admin";
+import bookingsRouter from "./bookings";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(usersRouter);
 router.use(messagesRouter);
 router.use(operatorRouter);
 router.use(adminRouter);
+router.use(bookingsRouter);
 
 export default router;

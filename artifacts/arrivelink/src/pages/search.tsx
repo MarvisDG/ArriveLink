@@ -1,5 +1,5 @@
 import { useSearch } from "wouter";
-import { ArrowLeft, Clock, MapPin, Search as SearchIcon, ShieldCheck, Bus, AlertCircle } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Search as SearchIcon, ShieldCheck, Bus, AlertCircle, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import {
   useGetCities,
@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, getStatusColor, getStatusLabel, cn } from "@/lib/utils";
 import { StarRating } from "@/components/star-rating";
-import { MessageCompanyModal } from "@/components/message-company-modal";
 import { Layout } from "@/components/layout";
 
 export default function Search() {
@@ -267,10 +266,12 @@ export default function Search() {
                             View Company
                           </Link>
                         </Button>
-                        <MessageCompanyModal
-                          companyId={route.company.id}
-                          companyName={route.company.name}
-                        />
+                        <Button asChild>
+                          <Link href={`/booking/request/${route.id}`}>
+                            <Calendar className="w-4 h-4 mr-2" />
+                            Reserve Seat
+                          </Link>
+                        </Button>
                       </div>
                     </div>
                   </div>
