@@ -1,0 +1,2 @@
+- [ArriveLink mock-db](arrivelink-mock-db.md) — all data is in-memory; no real DB; resets on restart; mock-db.ts is the source of truth.
+- [ArriveLink unlock flow](arrivelink-unlock-flow.md) — test mode by default; PAYSTACK_SECRET_KEY env var enables real payments.
