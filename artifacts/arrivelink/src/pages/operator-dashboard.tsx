@@ -930,3 +930,565 @@ function ProfileSection({
     </div>
   );
 }
+
+// ── BOOKING MANAGEMENT SECTIONS ───────────────────────────────────────────
+
+interface EnrichedBooking {
+  id: number;
+  status: string;
+  traveler_name: string;
+  traveler_phone: string;
+  seats_requested: number;
+  departure_time: string;
+  requested_at: string;
+  response_deadline: string;
+  payment_deadline: string | null;
+  route: {
+    price: number;
+    terminal_location: string;
+    departure_city: { name: string } | null;
+    destination_city: { name: string } | null;
+  } | null;
+  company: { name: string } | null;
+  ticket: { ticket_code: string } | null;
+  total_fare: number;
+  convenience_fee: number;
+}
+
+function koboToNaira(kobo: number) {
+  return `₦${(kobo / 100).toLocaleString("en-NG")}`;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  AWAITING_RESPONSE: "bg-amber-100 text-amber-700 border-amber-200",
+  AWAITING_PAYMENT: "bg-blue-100 text-blue-700 border-blue-200",
+  TICKET_ISSUED: "bg-green-100 text-green-700 border-green-200",
+  BOARDED: "bg-green-200 text-green-800 border-green-300",
+  REJECTED: "bg-red-100 text-red-700 border-red-200",
+  CANCELLED_TIMEOUT: "bg-red-100 text-red-600 border-red-200",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  AWAITING_RESPONSE: "Awaiting Response",
+  AWAITING_PAYMENT: "Awaiting Payment",
+  TICKET_ISSUED: "Ticket Issued",
+  BOARDED: "Boarded",
+  REJECTED: "Declined",
+  CANCELLED_TIMEOUT: "Expired",
+};
+
+function CountdownBadge({ deadline }: { deadline: string }) {
+  const [remaining, setRemaining] = useState(
+    Math.max(0, new Date(deadline).getTime() - Date.now())
+  );
+  useEffect(() => {
+    const iv = setInterval(
+      () => setRemaining(Math.max(0, new Date(deadline).getTime() - Date.now())),
+      1000
+    );
+    return () => clearInterval(iv);
+  }, [deadline]);
+  const mins = Math.floor(remaining / 60000);
+  const secs = Math.floor((remaining % 60000) / 1000);
+  const isUrgent = remaining < 120000;
+  return (
+    <span className={`font-mono text-sm font-bold tabular-nums ${isUrgent ? "text-red-600" : "text-amber-600"}`}>
+      {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+    </span>
+  );
+}
+
+function RequestsSection({ companyId }: { companyId: number }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: requests = [], isLoading, refetch } = useQuery<EnrichedBooking[]>({
+    queryKey: ["operator", "booking-req-list", companyId],
+    queryFn: () => apiFetch("/operator/bookings/requests"),
+    refetchInterval: 8000,
+  });
+
+  useEffect(() => {
+    if (!requests.length) return;
+    const soonestMs = Math.min(...requests.map((r) => new Date(r.response_deadline).getTime()));
+    const msUntil = soonestMs - Date.now();
+    if (msUntil <= 0) { refetch(); return; }
+    const timer = setTimeout(() => refetch(), msUntil + 600);
+    return () => clearTimeout(timer);
+  }, [requests, refetch]);
+
+  const acceptMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiFetch(`/operator/bookings/requests/${id}/accept`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator"] });
+      toast({ title: "Request accepted", description: "Traveler notified to complete payment." });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Failed", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiFetch(`/operator/bookings/requests/${id}/reject`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator"] });
+      toast({ title: "Request declined" });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Failed", description: err.message, variant: "destructive" }),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border p-16 flex justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-gray-900">Incoming Requests</h2>
+          <p className="text-sm text-gray-500">
+            Respond within 10 minutes — unanswered requests expire automatically
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          Refresh
+        </Button>
+      </div>
+
+      {requests.length === 0 ? (
+        <div className="bg-white rounded-xl border shadow-sm p-16 text-center">
+          <Inbox className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p className="font-medium text-gray-600">No pending requests</p>
+          <p className="text-sm text-gray-400 mt-1">New reservation requests will appear here</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {requests.map((req) => (
+            <div key={req.id} className="bg-white rounded-xl border shadow-sm p-5">
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-start justify-between">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="font-bold text-base">{req.traveler_name}</span>
+                    <span className="text-sm text-gray-500">{req.traveler_phone}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <span className="font-medium">{req.route?.departure_city?.name}</span>
+                    <ArrowRight className="h-3 w-3" />
+                    <span className="font-medium">{req.route?.destination_city?.name}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" /> Departs {req.departure_time}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" /> {req.seats_requested} seat{req.seats_requested > 1 ? "s" : ""}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" /> {req.route?.terminal_location}
+                    </span>
+                  </div>
+                  <div className="text-sm font-semibold text-primary">
+                    {koboToNaira(req.total_fare)} total
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-3 shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    Expires in <CountdownBadge deadline={req.response_deadline} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-red-200 text-red-600 hover:bg-red-50"
+                      disabled={rejectMutation.isPending}
+                      onClick={() => rejectMutation.mutate(req.id)}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Decline
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={acceptMutation.isPending}
+                      onClick={() => acceptMutation.mutate(req.id)}
+                    >
+                      <Check className="h-4 w-4 mr-1" /> Accept
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActiveBookingsSection({ companyId }: { companyId: number }) {
+  const { data: bookings = [], isLoading } = useQuery<EnrichedBooking[]>({
+    queryKey: ["operator", "active-bookings", companyId],
+    queryFn: () => apiFetch("/operator/bookings/active"),
+    refetchInterval: 15000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border p-16 flex justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-bold text-gray-900">Active Bookings</h2>
+        <p className="text-sm text-gray-500">
+          Confirmed reservations awaiting payment or ticket issuance
+        </p>
+      </div>
+
+      {bookings.length === 0 ? (
+        <div className="bg-white rounded-xl border shadow-sm p-16 text-center">
+          <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p className="font-medium text-gray-600">No active bookings</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Accepted reservations appear here after travelers pay
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="text-left p-4 font-semibold text-gray-600">Traveler</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Route</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Departs</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Seats</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Status</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Ticket</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {bookings.map((b) => (
+                <tr key={b.id} className="hover:bg-gray-50/50">
+                  <td className="p-4">
+                    <p className="font-medium">{b.traveler_name}</p>
+                    <p className="text-xs text-gray-400">{b.traveler_phone}</p>
+                  </td>
+                  <td className="p-4 text-gray-600">
+                    {b.route?.departure_city?.name} → {b.route?.destination_city?.name}
+                  </td>
+                  <td className="p-4 font-mono text-gray-700">{b.departure_time}</td>
+                  <td className="p-4 text-gray-600">{b.seats_requested}</td>
+                  <td className="p-4">
+                    <Badge className={`border text-xs ${STATUS_COLORS[b.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {STATUS_LABELS[b.status] ?? b.status}
+                    </Badge>
+                    {b.status === "AWAITING_PAYMENT" && b.payment_deadline && (
+                      <div className="mt-0.5">
+                        <CountdownBadge deadline={b.payment_deadline} />
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {b.ticket ? (
+                      <span className="font-mono text-xs font-bold text-primary">
+                        {b.ticket.ticket_code}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoardingSection({ companyId }: { companyId: number }) {
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [result, setResult] = useState<EnrichedBooking | null>(null);
+  const [searchError, setSearchError] = useState("");
+  const [boarding, setBoarding] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setSearching(true);
+    setResult(null);
+    setSearchError("");
+    try {
+      const data = await apiFetch(
+        `/operator/bookings/search?q=${encodeURIComponent(query.trim())}`
+      );
+      setResult(data);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : "No booking found");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleBoard() {
+    if (!result) return;
+    setBoarding(true);
+    try {
+      const updated = await apiFetch(`/operator/bookings/${result.id}/board`, {
+        method: "POST",
+      });
+      setResult(updated);
+      queryClient.invalidateQueries({ queryKey: ["operator"] });
+      toast({
+        title: "Traveler boarded",
+        description: `${result.traveler_name} confirmed boarded.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed",
+        variant: "destructive",
+      });
+    } finally {
+      setBoarding(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-bold text-gray-900">Boarding Confirmation</h2>
+        <p className="text-sm text-gray-500">
+          Search by ticket code, traveler name, or phone number
+        </p>
+      </div>
+
+      <form onSubmit={handleSearch} className="flex gap-3">
+        <div className="relative flex-1">
+          <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="e.g. AL-2026-DEMO1 or traveler name"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Button type="submit" disabled={searching}>
+          {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+        </Button>
+      </form>
+
+      {searchError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+          {searchError}
+        </div>
+      )}
+
+      {result && (
+        <div className="bg-white rounded-xl border shadow-sm p-6 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-lg">{result.traveler_name}</h3>
+              <p className="text-sm text-gray-500">{result.traveler_phone}</p>
+            </div>
+            <Badge className={`border ${STATUS_COLORS[result.status] ?? "bg-gray-100 text-gray-600"}`}>
+              {STATUS_LABELS[result.status] ?? result.status}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-500 text-xs">Route</p>
+              <p className="font-medium">
+                {result.route?.departure_city?.name} → {result.route?.destination_city?.name}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Departure</p>
+              <p className="font-medium font-mono">{result.departure_time}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Seats</p>
+              <p className="font-medium">{result.seats_requested}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">Ticket Code</p>
+              <p className="font-bold font-mono text-primary">
+                {result.ticket?.ticket_code ?? "—"}
+              </p>
+            </div>
+          </div>
+
+          {result.status === "TICKET_ISSUED" && (
+            <Button
+              className="w-full h-11 font-semibold"
+              onClick={handleBoard}
+              disabled={boarding}
+            >
+              {boarding ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Confirm Boarding
+            </Button>
+          )}
+          {result.status === "BOARDED" && (
+            <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-xl px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+              <span className="font-medium">Traveler confirmed boarded</span>
+            </div>
+          )}
+          {result.status === "AWAITING_PAYMENT" && (
+            <div className="flex items-center gap-2 text-amber-700 bg-amber-50 rounded-xl px-4 py-3">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <span className="text-sm font-medium">
+                Traveler has not yet completed payment
+              </span>
+            </div>
+          )}
+          {result.status === "CANCELLED_TIMEOUT" && (
+            <div className="flex items-center gap-2 text-red-700 bg-red-50 rounded-xl px-4 py-3">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <span className="text-sm font-medium">
+                This booking expired and was cancelled
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!result && !searchError && !searching && (
+        <div className="bg-white rounded-xl border shadow-sm p-16 text-center">
+          <ScanLine className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <p className="font-medium text-gray-600">Search for a traveler</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Enter ticket code, name, or phone number above
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WalletSection({ companyId }: { companyId: number }) {
+  const { data: wallet, isLoading } = useQuery<{
+    pending_balance: number;
+    available_balance: number;
+    recent_transactions: EnrichedBooking[];
+  }>({
+    queryKey: ["operator", "wallet", companyId],
+    queryFn: () => apiFetch("/operator/wallet"),
+    refetchInterval: 30000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl border p-16 flex justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const pending = wallet?.pending_balance ?? 0;
+  const available = wallet?.available_balance ?? 0;
+  const total = pending + available;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-bold text-gray-900">Wallet &amp; Earnings</h2>
+        <p className="text-sm text-gray-500">
+          Pending funds settle after boarding confirmation
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border shadow-sm p-5">
+          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Total Earnings</p>
+          <p className="text-2xl font-bold text-gray-900">{koboToNaira(total)}</p>
+        </div>
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+          <p className="text-xs text-primary/70 mb-1 uppercase tracking-wider">Available</p>
+          <p className="text-2xl font-bold text-primary">{koboToNaira(available)}</p>
+          <p className="text-xs text-primary/60 mt-1">Ready for withdrawal</p>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <p className="text-xs text-amber-700/70 mb-1 uppercase tracking-wider">Pending</p>
+          <p className="text-2xl font-bold text-amber-700">{koboToNaira(pending)}</p>
+          <p className="text-xs text-amber-600/70 mt-1">Awaiting boarding confirmation</p>
+        </div>
+      </div>
+
+      {available > 0 && (
+        <Button
+          className="gap-2"
+          onClick={() =>
+            alert("Withdrawal requests will be processed within 24 hours.")
+          }
+        >
+          <Wallet className="h-4 w-4" /> Request Withdrawal
+        </Button>
+      )}
+
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b">
+          <h3 className="font-semibold text-gray-800">Recent Transactions</h3>
+        </div>
+        {!wallet?.recent_transactions?.length ? (
+          <div className="p-16 text-center">
+            <Ticket className="h-8 w-8 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm text-gray-400">No transactions yet</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="text-left p-4 font-semibold text-gray-600">Traveler</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Route</th>
+                <th className="text-left p-4 font-semibold text-gray-600">Status</th>
+                <th className="text-right p-4 font-semibold text-gray-600">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {wallet.recent_transactions.map((t) => {
+                const fare = (t.route?.price ?? 0) * t.seats_requested;
+                return (
+                  <tr key={t.id} className="hover:bg-gray-50/50">
+                    <td className="p-4">
+                      <p className="font-medium">{t.traveler_name}</p>
+                      <p className="text-xs text-gray-400">Booking #{t.id}</p>
+                    </td>
+                    <td className="p-4 text-gray-600">
+                      {t.route?.departure_city?.name} → {t.route?.destination_city?.name}
+                    </td>
+                    <td className="p-4">
+                      <Badge className={`border text-xs ${STATUS_COLORS[t.status] ?? "bg-gray-100 text-gray-600"}`}>
+                        {STATUS_LABELS[t.status] ?? t.status}
+                      </Badge>
+                    </td>
+                    <td className="p-4 text-right font-semibold">{koboToNaira(fare)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}

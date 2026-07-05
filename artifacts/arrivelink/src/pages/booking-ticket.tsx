@@ -58,12 +58,45 @@ export default function BookingTicket() {
     );
   }
 
-  if (!booking || !booking.ticket) {
+  if (!booking || (booking as any).error) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-          <p className="text-muted-foreground">Ticket not found.</p>
+          <p className="text-muted-foreground">Booking not found.</p>
           <Button asChild variant="outline"><Link href="/">Go Home</Link></Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!booking.ticket) {
+    const actionHref =
+      booking.status === "AWAITING_RESPONSE"
+        ? `/booking/awaiting/${booking.id}`
+        : booking.status === "AWAITING_PAYMENT"
+        ? `/booking/payment/${booking.id}`
+        : "/";
+    const actionLabel =
+      booking.status === "AWAITING_RESPONSE"
+        ? "Track Request"
+        : booking.status === "AWAITING_PAYMENT"
+        ? "Complete Payment"
+        : "Go Home";
+    const desc =
+      booking.status === "AWAITING_RESPONSE"
+        ? "Your ticket will be issued once the operator accepts and you complete payment."
+        : booking.status === "AWAITING_PAYMENT"
+        ? "Your ticket will be issued after payment is completed."
+        : "This booking does not have a ticket yet.";
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center flex-col gap-6 px-4 text-center">
+          <Loader2 className="w-10 h-10 text-muted-foreground animate-spin" />
+          <div>
+            <h2 className="font-bold text-xl mb-2">Ticket Not Issued Yet</h2>
+            <p className="text-muted-foreground text-sm max-w-sm">{desc}</p>
+          </div>
+          <Button asChild><Link href={actionHref}>{actionLabel}</Link></Button>
         </div>
       </Layout>
     );

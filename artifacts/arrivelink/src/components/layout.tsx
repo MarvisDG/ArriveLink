@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Bus, User } from "lucide-react";
+import { Bus, User, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function getUserToken() {
@@ -24,6 +24,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
               <Link href="/">Home</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/bookings">
+                <Ticket className="h-4 w-4 mr-1.5" />
+                My Bookings
+              </Link>
             </Button>
             {isLoggedIn ? (
               <Button variant="ghost" size="sm" asChild>
